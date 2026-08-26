@@ -27,11 +27,15 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   server: {
+    host: "0.0.0.0",
+    allowedHosts: true,
     headers: {
       "Cache-Control": "public, max-age=31536000, immutable",
     },
   },
   preview: {
+    host: "0.0.0.0",
+    allowedHosts: true,
     headers: {
       "Cache-Control": "public, max-age=31536000, immutable",
     },
