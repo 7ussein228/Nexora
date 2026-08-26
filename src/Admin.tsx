@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Bi, ProjectItem, ServiceItem, SiteContent, StatItem, TierItem } from "./content";
 import { defaultContent, exportContent, resetContent } from "./content";
 import type { Dict, Lang } from "./i18n";
+import { loadSubmissions, deleteSubmission, clearSubmissions, exportCSV, type FormSubmission } from "./forms";
 
-type Tab = "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "data";
+type Tab = "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "forms" | "data";
 
 const tabs: Array<[Tab, string, string]> = [
   ["hero", "Hero & About", "الرئيسية ومن نحن"],
@@ -13,6 +14,7 @@ const tabs: Array<[Tab, string, string]> = [
   ["tiers", "Pricing Tiers", "باقات الأسعار"],
   ["pricing", "Quote Calculator", "حاسبة الأسعار"],
   ["contact", "Contact Info", "بيانات التواصل"],
+  ["forms", "Forms", "الرسائل"],
   ["data", "Data & Backup", "البيانات والنسخ"],
 ];
 
@@ -78,6 +80,16 @@ export default function AdminDashboard({
 }) {
   const [tab, setTab] = useState<Tab>("hero");
   const [saved, setSaved] = useState("");
+  const [forms, setForms] = useState<FormSubmission[]>(() => loadSubmissions());
+  useEffect(() => {
+    const onUpdate = () => setForms(loadSubmissions());
+    window.addEventListener("nexora:forms-updated", onUpdate);
+    window.addEventListener("storage", onUpdate);
+    return () => {
+      window.removeEventListener("nexora:forms-updated", onUpdate);
+      window.removeEventListener("storage", onUpdate);
+    };
+  }, []);
 
   const flash = (msg: string) => { setSaved(msg); window.setTimeout(() => setSaved(""), 2600); };
   const patch = (partial: Partial<SiteContent>) => { setContent({ ...content, ...partial }); flash(lang === "ar" ? "تم الحفظ" : "Saved"); };
@@ -292,6 +304,72 @@ export default function AdminDashboard({
                 <Field label="Behance" value={content.contact.behance} onChange={(v) => patch({ contact: { ...content.contact, behance: v } })} />
               </div>
             </div>
+          </section>
+        )}
+
+        {/* ---------------- FORMS ---------------- */}
+        {tab === "forms" && (
+          <section className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-2xl font-bold">{lang === "ar" ? "الرسائل والنماذج" : "Form Submissions"} <span className="ms-2 rounded-full bg-cyan-300 px-2.5 py-1 text-xs text-slate-950">{forms.length}</span></h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!forms.length) return;
+                    const csv = exportCSV(forms);
+                    const blob = new Blob([csv], { type: "text/csv" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `nexora-forms-${new Date().toISOString().slice(0,10)}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  }}
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/10"
+                >
+                  {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+                </button>
+                <button
+                  onClick={() => { if (confirm(lang==="ar" ? "مسح كل الرسائل؟" : "Clear all submissions?")) { clearSubmissions(); setForms([]); flash(lang==="ar" ? "تم المسح" : "Cleared"); } }}
+                  className="rounded-full border border-red-500/30 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10"
+                >
+                  {lang === "ar" ? "مسح الكل" : "Clear all"}
+                </button>
+              </div>
+            </div>
+            {forms.length === 0 ? (
+              <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center text-slate-400">{lang==="ar" ? "لا توجد رسائل بعد. أي فورم يملأه العميل من صفحة About أو Contact هيظهر هنا." : "No submissions yet. Any form filled on About or Contact will appear here."}</p>
+            ) : (
+              <div className="space-y-3">
+                {forms.map((f) => (
+                  <div key={f.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-bold text-cyan-200">{f.id} <span className="ms-2 text-xs text-slate-400">{new Date(f.createdAt).toLocaleString(lang==="ar" ? "ar-EG" : "en-US")}</span></p>
+                      <button onClick={() => { deleteSubmission(f.id); setForms(loadSubmissions()); flash(lang==="ar" ? "تم الحذف" : "Deleted"); }} className="rounded-full border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10">{lang==="ar" ? "حذف" : "Delete"}</button>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <p><span className="text-slate-400">Name:</span> <span className="text-white">{f.name}</span></p>
+                      <p><span className="text-slate-400">Email:</span> <a href={`mailto:${f.email}`} className="text-cyan-300 underline" dir="ltr">{f.email}</a></p>
+                      <p><span className="text-slate-400">Phone:</span> <a href={`tel:${f.phone}`} className="text-cyan-300 underline" dir="ltr">{f.phone}</a></p>
+                      <p><span className="text-slate-400">Company:</span> {f.company}</p>
+                      <p><span className="text-slate-400">Business:</span> {f.business}</p>
+                      <p><span className="text-slate-400">Service:</span> {f.service}</p>
+                      <p><span className="text-slate-400">Budget:</span> {f.budget}</p>
+                      <p><span className="text-slate-400">Deadline:</span> {f.deadline}</p>
+                    </div>
+                    <div className="mt-2 space-y-1 text-sm">
+                      <p><span className="text-slate-400">Description:</span> <span className="text-slate-200">{f.description}</span></p>
+                      <p><span className="text-slate-400">References:</span> <span dir="ltr" className="text-slate-200">{f.references}</span></p>
+                      <p><span className="text-slate-400">Features:</span> <span className="text-slate-200">{f.features}</span></p>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <a href={`mailto:${f.email}?subject=Re: ${f.id} - NEXORA`} className="rounded-full bg-cyan-300 px-4 py-1.5 text-xs font-bold text-slate-950">Reply via Email</a>
+                      <a href={`https://wa.me/${f.phone.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-emerald-500/30 px-4 py-1.5 text-xs text-emerald-300">WhatsApp</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="rounded-xl bg-slate-900 p-3 text-xs text-slate-400">{lang==="ar" ? "الرسائل محفوظة في متصفحك (localStorage). للإيميل التلقائي اربط الفورم بـ EmailJS أو Webhook في الكود." : "Submissions are stored in this browser (localStorage). For auto-email, connect the form to EmailJS or a webhook."}</p>
           </section>
         )}
 

@@ -1,6 +1,7 @@
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, memo, useRef, useState } from "react";
 import { dict, fmtMoney, fmtNum, type Dict, type Lang } from "./i18n";
 import { loadContent, saveContent, type Bi, type ProjectItem, type SiteContent } from "./content";
+import { saveSubmission } from "./forms";
 
 const AdminDashboard = lazy(() => import("./Admin"));
 
@@ -165,17 +166,37 @@ function QuoteBuilder({ content, t, lang }: { content: SiteContent; t: Dict; lan
 function ContactForm({ onSubmit, t }: { onSubmit: (id: string) => void; t: Dict }) {
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onSubmit(`NX-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 89999)}`);
+    const fd = new FormData(e.currentTarget);
+    const entry = saveSubmission({
+      name: String(fd.get("name") || ""),
+      company: String(fd.get("company") || ""),
+      email: String(fd.get("email") || ""),
+      phone: String(fd.get("phone") || ""),
+      business: String(fd.get("business") || ""),
+      service: String(fd.get("service") || ""),
+      budget: String(fd.get("budget") || ""),
+      deadline: String(fd.get("deadline") || ""),
+      description: String(fd.get("description") || ""),
+      references: String(fd.get("references") || ""),
+      features: String(fd.get("features") || ""),
+    });
+    onSubmit(entry.id);
     e.currentTarget.reset();
   };
   const f = t.contact.fields;
-  const short: Array<[string, boolean, string]> = [[f.name, true, "text"], [f.company, false, "text"], [f.email, true, "email"], [f.phone, true, "tel"], [f.biz, true, "text"], [f.service, true, "text"], [f.budget, true, "text"], [f.deadline, true, "text"]];
   return (
     <form onSubmit={submit} className="grid gap-4 rounded-3xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-xl sm:grid-cols-2 sm:rounded-[2rem] sm:p-6 md:p-8">
-      {short.map(([l, r, ty]) => <label key={l} className="text-sm text-slate-300">{l}<input required={r} type={ty} className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>)}
-      <label className="text-sm text-slate-300 sm:col-span-2">{f.desc}<textarea required rows={5} className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
-      <label className="text-sm text-slate-300">{f.refs}<input type="text" dir="ltr" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
-      <label className="text-sm text-slate-300">{f.feats}<input type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.name}<input name="name" required type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.company}<input name="company" type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.email}<input name="email" required type="email" dir="ltr" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.phone}<input name="phone" required type="tel" dir="ltr" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.biz}<input name="business" required type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.service}<input name="service" required type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.budget}<input name="budget" required type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.deadline}<input name="deadline" required type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300 sm:col-span-2">{f.desc}<textarea name="description" required rows={5} className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.refs}<input name="references" type="text" dir="ltr" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
+      <label className="text-sm text-slate-300">{f.feats}<input name="features" type="text" className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-300" /></label>
       <label className="text-sm text-slate-300 sm:col-span-2">{f.files}<input type="file" multiple className="mt-2 w-full rounded-2xl border border-dashed border-white/20 bg-slate-950/70 px-4 py-3 text-slate-300 file:me-4 file:rounded-full file:border-0 file:bg-cyan-200 file:px-4 file:py-2 file:text-slate-950" /></label>
       <button className="magnetic rounded-full bg-gradient-to-r from-cyan-200 to-violet-200 px-7 py-4 font-bold text-slate-950 transition hover:scale-[1.02] sm:col-span-2">{t.cta.start}</button>
     </form>
