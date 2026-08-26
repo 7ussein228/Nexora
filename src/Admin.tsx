@@ -81,6 +81,8 @@ export default function AdminDashboard({
   const [tab, setTab] = useState<Tab>("hero");
   const [saved, setSaved] = useState("");
   const [forms, setForms] = useState<FormSubmission[]>(() => loadSubmissions());
+  const [draft, setDraft] = useState<SiteContent>(content);
+  useEffect(() => setDraft(content), [content]);
   useEffect(() => {
     const onUpdate = () => setForms(loadSubmissions());
     window.addEventListener("nexora:forms-updated", onUpdate);
@@ -92,12 +94,25 @@ export default function AdminDashboard({
   }, []);
 
   const flash = (msg: string) => { setSaved(msg); window.setTimeout(() => setSaved(""), 2600); };
-  const patch = (partial: Partial<SiteContent>) => { setContent({ ...content, ...partial }); flash(lang === "ar" ? "تم الحفظ" : "Saved"); };
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(content);
+  const save = () => { setContent(draft); flash(lang === "ar" ? "تم الحفظ - اضغط View site للمشاهدة" : "Saved - click View site to see"); };
+  const patchDraft = (partial: Partial<SiteContent>) => setDraft({ ...draft, ...partial });
+  const resetDraft = () => setDraft(content);
 
   const updateList = <T extends { id: string }>(list: T[], id: string, changes: Partial<T>) =>
     list.map((item) => (item.id === id ? { ...item, ...changes } : item));
 
   const emptyBi: Bi = { en: "", ar: "" };
+
+  const SubmitBar = () => (
+    <div className="sticky bottom-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/30 bg-slate-900/90 p-4 backdrop-blur-xl">
+      <p className="text-sm text-slate-300">{isDirty ? (lang==="ar" ? "لديك تعديلات غير محفوظة" : "You have unsaved changes") : (lang==="ar" ? "كل التعديلات محفوظة" : "All changes saved")}</p>
+      <div className="flex gap-2">
+        <button onClick={resetDraft} disabled={!isDirty} className="rounded-full border border-white/15 px-5 py-2.5 text-sm disabled:opacity-40 hover:bg-white/10">{lang==="ar" ? "تراجع" : "Discard"}</button>
+        <button onClick={save} disabled={!isDirty} className="rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-7 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-40 hover:scale-[1.02]">{lang==="ar" ? "حفظ (Submit)" : "Submit / Save"}</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -137,14 +152,15 @@ export default function AdminDashboard({
           <section className="space-y-6">
             <h2 className="text-2xl font-bold">{lang === "ar" ? "القسم الرئيسي" : "Hero Section"}</h2>
             <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <BiField label="Headline" value={content.hero.title} onChange={(v) => patch({ hero: { ...content.hero, title: v } })} area rows={2} />
-              <BiField label="Sub-headline" value={content.hero.sub} onChange={(v) => patch({ hero: { ...content.hero, sub: v } })} area rows={3} />
+              <BiField label="Headline" value={draft.hero.title} onChange={(v) => patchDraft({ hero: { ...draft.hero, title: v } })} area rows={2} />
+              <BiField label="Sub-headline" value={draft.hero.sub} onChange={(v) => patchDraft({ hero: { ...draft.hero, sub: v } })} area rows={3} />
             </div>
             <h2 className="text-2xl font-bold">{lang === "ar" ? "من نحن" : "About Section"}</h2>
             <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <BiField label="Title" value={content.about.title} onChange={(v) => patch({ about: { ...content.about, title: v } })} area rows={2} />
-              <BiField label="Body" value={content.about.copy} onChange={(v) => patch({ about: { ...content.about, copy: v } })} area rows={5} />
+              <BiField label="Title" value={draft.about.title} onChange={(v) => patchDraft({ about: { ...draft.about, title: v } })} area rows={2} />
+              <BiField label="Body" value={draft.about.copy} onChange={(v) => patchDraft({ about: { ...draft.about, copy: v } })} area rows={5} />
             </div>
+            <SubmitBar />
           </section>
         )}
 
@@ -153,17 +169,18 @@ export default function AdminDashboard({
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">{lang === "ar" ? "الإحصائيات" : "Statistics"}</h2>
-              <button onClick={() => patch({ stats: [...content.stats, { id: `s${Date.now()}`, label: { ...emptyBi }, value: 0, suffix: "+" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
+              <button onClick={() => patchDraft({ stats: [...draft.stats, { id: `s${Date.now()}`, label: { ...emptyBi }, value: 0, suffix: "+" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
             </div>
-            {content.stats.map((s: StatItem) => (
-              <Card key={s.id} title={s.label.en || "Untitled stat"} onDelete={() => patch({ stats: content.stats.filter((x) => x.id !== s.id) })}>
-                <BiField label="Label" value={s.label} onChange={(v) => patch({ stats: updateList(content.stats, s.id, { label: v }) })} />
+            {draft.stats.map((s: StatItem) => (
+              <Card key={s.id} title={s.label.en || "Untitled stat"} onDelete={() => patchDraft({ stats: draft.stats.filter((x) => x.id !== s.id) })}>
+                <BiField label="Label" value={s.label} onChange={(v) => patchDraft({ stats: updateList(draft.stats, s.id, { label: v }) })} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Value" type="number" value={s.value} onChange={(v) => patch({ stats: updateList(content.stats, s.id, { value: Number(v) }) })} />
-                  <Field label="Suffix" value={s.suffix} onChange={(v) => patch({ stats: updateList(content.stats, s.id, { suffix: v }) })} hint="e.g. + or %" />
+                  <Field label="Value" type="number" value={s.value} onChange={(v) => patchDraft({ stats: updateList(draft.stats, s.id, { value: Number(v) }) })} />
+                  <Field label="Suffix" value={s.suffix} onChange={(v) => patchDraft({ stats: updateList(draft.stats, s.id, { suffix: v }) })} hint="e.g. + or %" />
                 </div>
               </Card>
             ))}
+            <SubmitBar />
           </section>
         )}
 
@@ -172,19 +189,20 @@ export default function AdminDashboard({
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">{lang === "ar" ? "الخدمات" : "Services"}</h2>
-              <button onClick={() => patch({ services: [...content.services, { id: `sv${Date.now()}`, name: { ...emptyBi }, blurb: { ...emptyBi }, price: { ...emptyBi }, accent: "from-cyan-300 to-blue-500", icon: "new" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
+              <button onClick={() => patchDraft({ services: [...draft.services, { id: `sv${Date.now()}`, name: { ...emptyBi }, blurb: { ...emptyBi }, price: { ...emptyBi }, accent: "from-cyan-300 to-blue-500", icon: "new" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
             </div>
-            {content.services.map((s: ServiceItem) => (
-              <Card key={s.id} title={s.name.en || "Untitled service"} onDelete={() => patch({ services: content.services.filter((x) => x.id !== s.id) })}>
-                <BiField label="Name" value={s.name} onChange={(v) => patch({ services: updateList(content.services, s.id, { name: v }) })} />
-                <BiField label="Description" value={s.blurb} onChange={(v) => patch({ services: updateList(content.services, s.id, { blurb: v }) })} area />
-                <BiField label="Starting price (leave blank for 'Custom scope')" value={s.price} onChange={(v) => patch({ services: updateList(content.services, s.id, { price: v }) })} />
+            {draft.services.map((s: ServiceItem) => (
+              <Card key={s.id} title={s.name.en || "Untitled service"} onDelete={() => patchDraft({ services: draft.services.filter((x) => x.id !== s.id) })}>
+                <BiField label="Name" value={s.name} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { name: v }) })} />
+                <BiField label="Description" value={s.blurb} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { blurb: v }) })} area />
+                <BiField label="Starting price (leave blank for 'Custom scope')" value={s.price} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { price: v }) })} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Icon text" value={s.icon} onChange={(v) => patch({ services: updateList(content.services, s.id, { icon: v }) })} hint="Short label shown in the 3D tile" />
-                  <Field label="Gradient" value={s.accent} onChange={(v) => patch({ services: updateList(content.services, s.id, { accent: v }) })} hint="Tailwind: from-cyan-300 to-blue-500" />
+                  <Field label="Icon text" value={s.icon} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { icon: v }) })} hint="Short label shown in the 3D tile" />
+                  <Field label="Gradient" value={s.accent} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { accent: v }) })} hint="Tailwind: from-cyan-300 to-blue-500" />
                 </div>
               </Card>
             ))}
+            <SubmitBar />
           </section>
         )}
 
@@ -193,36 +211,37 @@ export default function AdminDashboard({
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">{lang === "ar" ? "المشاريع" : "Projects"}</h2>
-              <button onClick={() => patch({ projects: [...content.projects, { id: `p${Date.now()}`, name: "New Project", url: "", image: "", featured: true, client: { ...emptyBi }, industry: { ...emptyBi }, services: { ...emptyBi }, tech: "", budget: "", duration: { ...emptyBi }, result: { ...emptyBi }, quote: { ...emptyBi }, author: { ...emptyBi }, problem: { ...emptyBi }, solution: { ...emptyBi }, features: { ...emptyBi } }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
+              <button onClick={() => patchDraft({ projects: [...draft.projects, { id: `p${Date.now()}`, name: "New Project", url: "", image: "", featured: true, client: { ...emptyBi }, industry: { ...emptyBi }, services: { ...emptyBi }, tech: "", budget: "", duration: { ...emptyBi }, result: { ...emptyBi }, quote: { ...emptyBi }, author: { ...emptyBi }, problem: { ...emptyBi }, solution: { ...emptyBi }, features: { ...emptyBi } }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
             </div>
-            {content.projects.map((p: ProjectItem) => (
-              <Card key={p.id} title={p.name || "Untitled project"} onDelete={() => patch({ projects: content.projects.filter((x) => x.id !== p.id) })}>
+            {draft.projects.map((p: ProjectItem) => (
+              <Card key={p.id} title={p.name || "Untitled project"} onDelete={() => patchDraft({ projects: draft.projects.filter((x) => x.id !== p.id) })}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Project name" value={p.name} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { name: v }) })} />
-                  <Field label="Live URL" value={p.url} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { url: v }) })} hint="Shows a 'Visit site' button when filled" />
+                  <Field label="Project name" value={p.name} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { name: v }) })} />
+                  <Field label="Live URL" value={p.url} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { url: v }) })} hint="Shows a 'Visit site' button when filled" />
                 </div>
-                <Field label="Preview image URL" value={p.image} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { image: v }) })} />
+                <Field label="Preview image URL" value={p.image} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { image: v }) })} />
                 {p.image ? <img src={p.image} alt="" className="h-32 w-full rounded-xl object-cover" loading="lazy" /> : null}
-                <BiField label="Client" value={p.client} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { client: v }) })} />
-                <BiField label="Industry" value={p.industry} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { industry: v }) })} />
-                <BiField label="Services provided" value={p.services} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { services: v }) })} />
+                <BiField label="Client" value={p.client} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { client: v }) })} />
+                <BiField label="Industry" value={p.industry} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { industry: v }) })} />
+                <BiField label="Services provided" value={p.services} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { services: v }) })} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Technologies" value={p.tech} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { tech: v }) })} />
-                  <Field label="Budget range" value={p.budget} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { budget: v }) })} />
+                  <Field label="Technologies" value={p.tech} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { tech: v }) })} />
+                  <Field label="Budget range" value={p.budget} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { budget: v }) })} />
                 </div>
-                <BiField label="Duration" value={p.duration} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { duration: v }) })} />
-                <BiField label="Result" value={p.result} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { result: v }) })} area rows={2} />
-                <BiField label="Client problem" value={p.problem} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { problem: v }) })} area rows={3} />
-                <BiField label="Our solution" value={p.solution} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { solution: v }) })} area rows={3} />
-                <BiField label="Features" value={p.features} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { features: v }) })} area rows={2} />
-                <BiField label="Testimonial" value={p.quote} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { quote: v }) })} area rows={3} />
-                <BiField label="Testimonial author" value={p.author} onChange={(v) => patch({ projects: updateList(content.projects, p.id, { author: v }) })} />
+                <BiField label="Duration" value={p.duration} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { duration: v }) })} />
+                <BiField label="Result" value={p.result} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { result: v }) })} area rows={2} />
+                <BiField label="Client problem" value={p.problem} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { problem: v }) })} area rows={3} />
+                <BiField label="Our solution" value={p.solution} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { solution: v }) })} area rows={3} />
+                <BiField label="Features" value={p.features} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { features: v }) })} area rows={2} />
+                <BiField label="Testimonial" value={p.quote} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { quote: v }) })} area rows={3} />
+                <BiField label="Testimonial author" value={p.author} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { author: v }) })} />
                 <label className="flex items-center gap-3 text-sm text-slate-300">
-                  <input type="checkbox" checked={p.featured} onChange={(e) => patch({ projects: updateList(content.projects, p.id, { featured: e.target.checked }) })} className="h-4 w-4 accent-cyan-300" />
+                  <input type="checkbox" checked={p.featured} onChange={(e) => patchDraft({ projects: updateList(draft.projects, p.id, { featured: e.target.checked }) })} className="h-4 w-4 accent-cyan-300" />
                   Show on homepage
                 </label>
               </Card>
             ))}
+            <SubmitBar />
           </section>
         )}
 
@@ -231,19 +250,20 @@ export default function AdminDashboard({
           <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">{lang === "ar" ? "باقات الأسعار" : "Pricing Tiers"}</h2>
-              <button onClick={() => patch({ tiers: [...content.tiers, { id: `t${Date.now()}`, name: "NEW", price: { ...emptyBi }, desc: { ...emptyBi }, highlight: false }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
+              <button onClick={() => patchDraft({ tiers: [...draft.tiers, { id: `t${Date.now()}`, name: "NEW", price: { ...emptyBi }, desc: { ...emptyBi }, highlight: false }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
             </div>
-            {content.tiers.map((tier: TierItem) => (
-              <Card key={tier.id} title={tier.name} onDelete={() => patch({ tiers: content.tiers.filter((x) => x.id !== tier.id) })}>
-                <Field label="Tier name" value={tier.name} onChange={(v) => patch({ tiers: updateList(content.tiers, tier.id, { name: v }) })} />
-                <BiField label="Price" value={tier.price} onChange={(v) => patch({ tiers: updateList(content.tiers, tier.id, { price: v }) })} />
-                <BiField label="Description" value={tier.desc} onChange={(v) => patch({ tiers: updateList(content.tiers, tier.id, { desc: v }) })} area rows={2} />
+            {draft.tiers.map((tier: TierItem) => (
+              <Card key={tier.id} title={tier.name} onDelete={() => patchDraft({ tiers: draft.tiers.filter((x) => x.id !== tier.id) })}>
+                <Field label="Tier name" value={tier.name} onChange={(v) => patchDraft({ tiers: updateList(draft.tiers, tier.id, { name: v }) })} />
+                <BiField label="Price" value={tier.price} onChange={(v) => patchDraft({ tiers: updateList(draft.tiers, tier.id, { price: v }) })} />
+                <BiField label="Description" value={tier.desc} onChange={(v) => patchDraft({ tiers: updateList(draft.tiers, tier.id, { desc: v }) })} area rows={2} />
                 <label className="flex items-center gap-3 text-sm text-slate-300">
-                  <input type="checkbox" checked={tier.highlight} onChange={(e) => patch({ tiers: updateList(content.tiers, tier.id, { highlight: e.target.checked }) })} className="h-4 w-4 accent-cyan-300" />
+                  <input type="checkbox" checked={tier.highlight} onChange={(e) => patchDraft({ tiers: updateList(draft.tiers, tier.id, { highlight: e.target.checked }) })} className="h-4 w-4 accent-cyan-300" />
                   Highlight this tier
                 </label>
               </Card>
             ))}
+            <SubmitBar />
           </section>
         )}
 
@@ -256,22 +276,22 @@ export default function AdminDashboard({
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
               <h3 className="mb-4 font-bold">Website types</h3>
               <div className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(content.pricing.websiteTypes).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patch({ pricing: { ...content.pricing, websiteTypes: { ...content.pricing.websiteTypes, [k]: Number(nv) } } })} />
+                {Object.entries(draft.pricing.websiteTypes).map(([k, v]) => (
+                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, websiteTypes: { ...draft.pricing.websiteTypes, [k]: Number(nv) } } })} />
                 ))}
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
               <h3 className="mb-4 font-bold">Per extra page</h3>
-              <Field label="Price per page" type="number" value={content.pricing.pagePrice} onChange={(v) => patch({ pricing: { ...content.pricing, pagePrice: Number(v) } })} />
+              <Field label="Price per page" type="number" value={draft.pricing.pagePrice} onChange={(v) => patchDraft({ pricing: { ...draft.pricing, pagePrice: Number(v) } })} />
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
               <h3 className="mb-4 font-bold">Features</h3>
               <div className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(content.pricing.features).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patch({ pricing: { ...content.pricing, features: { ...content.pricing.features, [k]: Number(nv) } } })} />
+                {Object.entries(draft.pricing.features).map(([k, v]) => (
+                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, features: { ...draft.pricing.features, [k]: Number(nv) } } })} />
                 ))}
               </div>
             </div>
@@ -279,11 +299,12 @@ export default function AdminDashboard({
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
               <h3 className="mb-4 font-bold">Design level multipliers</h3>
               <div className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(content.pricing.designLevels).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patch({ pricing: { ...content.pricing, designLevels: { ...content.pricing.designLevels, [k]: Number(nv) } } })} hint="Multiplier, e.g. 1.35" />
+                {Object.entries(draft.pricing.designLevels).map(([k, v]) => (
+                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, designLevels: { ...draft.pricing.designLevels, [k]: Number(nv) } } })} hint="Multiplier, e.g. 1.35" />
                 ))}
               </div>
             </div>
+            <SubmitBar />
           </section>
         )}
 
@@ -293,17 +314,18 @@ export default function AdminDashboard({
             <h2 className="text-2xl font-bold">{lang === "ar" ? "بيانات التواصل" : "Contact Info"}</h2>
             <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Email" value={content.contact.email} onChange={(v) => patch({ contact: { ...content.contact, email: v } })} />
-                <Field label="Phone / WhatsApp" value={content.contact.phone} onChange={(v) => patch({ contact: { ...content.contact, phone: v } })} />
+                <Field label="Email" value={draft.contact.email} onChange={(v) => patchDraft({ contact: { ...draft.contact, email: v } })} />
+                <Field label="Phone / WhatsApp" value={draft.contact.phone} onChange={(v) => patchDraft({ contact: { ...draft.contact, phone: v } })} />
               </div>
-              <BiField label="Business hours" value={content.contact.hours} onChange={(v) => patch({ contact: { ...content.contact, hours: v } })} />
-              <BiField label="Location" value={content.contact.location} onChange={(v) => patch({ contact: { ...content.contact, location: v } })} />
+              <BiField label="Business hours" value={draft.contact.hours} onChange={(v) => patchDraft({ contact: { ...draft.contact, hours: v } })} />
+              <BiField label="Location" value={draft.contact.location} onChange={(v) => patchDraft({ contact: { ...draft.contact, location: v } })} />
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="LinkedIn" value={content.contact.linkedin} onChange={(v) => patch({ contact: { ...content.contact, linkedin: v } })} />
-                <Field label="Instagram" value={content.contact.instagram} onChange={(v) => patch({ contact: { ...content.contact, instagram: v } })} />
-                <Field label="Behance" value={content.contact.behance} onChange={(v) => patch({ contact: { ...content.contact, behance: v } })} />
+                <Field label="LinkedIn" value={draft.contact.linkedin} onChange={(v) => patchDraft({ contact: { ...draft.contact, linkedin: v } })} />
+                <Field label="Instagram" value={draft.contact.instagram} onChange={(v) => patchDraft({ contact: { ...draft.contact, instagram: v } })} />
+                <Field label="Behance" value={draft.contact.behance} onChange={(v) => patchDraft({ contact: { ...draft.contact, behance: v } })} />
               </div>
             </div>
+            <SubmitBar />
           </section>
         )}
 
