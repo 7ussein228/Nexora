@@ -1,0 +1,424 @@
+@import "tailwindcss";
+
+/* ============================================================
+   BASE
+   ============================================================ */
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #020617;
+
+  /* Fluid spacing scale — adapts continuously between 320px and 1920px */
+  --section-y: clamp(3.5rem, 8vw, 8rem);
+  --gutter: clamp(1rem, 4vw, 4rem);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #020617;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #020617;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent long words/URLs from breaking narrow layouts */
+h1, h2, h3, h4, p, li, blockquote, code {
+  overflow-wrap: break-word;
+}
+
+/* iOS zooms on focus when inputs are under 16px */
+input,
+textarea,
+select {
+  font-size: max(16px, 1rem);
+  max-width: 100%;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  outline-offset: 4px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #67e8f9;
+}
+
+/* ============================================================
+   FLUID LAYOUT HELPERS
+   ============================================================ */
+.section-pad {
+  padding-top: var(--section-y);
+  padding-bottom: var(--section-y);
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.shell {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 80rem;
+}
+
+/* Ultrawide: let the grid breathe instead of stretching a 1280px column */
+@media (min-width: 1920px) {
+  .shell {
+    max-width: 96rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  .shell {
+    max-width: 110rem;
+  }
+}
+
+/* Respect notches / rounded corners on modern phones */
+@supports (padding: max(0px)) {
+  .safe-x {
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+    padding-right: max(var(--gutter), env(safe-area-inset-right));
+  }
+}
+
+/* ============================================================
+   BIDIRECTIONAL / RTL
+   ============================================================ */
+
+/* Arabic needs a taller line box and a font stack with real Arabic coverage */
+html[lang="ar"] {
+  font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, "Geeza Pro", "Arabic Typesetting", ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.85;
+}
+
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3 {
+  line-height: 1.35;
+  /* Arabic script has no uppercase and tight tracking hurts legibility */
+  letter-spacing: normal !important;
+}
+
+html[lang="ar"] .uppercase {
+  text-transform: none;
+}
+
+html[lang="ar"] [class*="tracking-["] {
+  letter-spacing: normal !important;
+}
+
+/* Timeline badge sits on whichever side the border is on */
+.timeline-badge {
+  inset-inline-start: -3.05rem;
+}
+
+@media (min-width: 640px) {
+  .timeline-badge {
+    inset-inline-start: -3.55rem;
+  }
+}
+
+/* Mirror the decorative hero gradients so lighting follows reading direction */
+[dir="rtl"] .hero-orbit > div:first-child {
+  transform: scaleX(-1);
+}
+
+/* Keep the toast optically centred in both directions */
+[dir="rtl"] .toast-center {
+  transform: translateX(50%);
+}
+
+/* ============================================================
+   3D / MOTION
+   ============================================================ */
+.hero-orbit {
+  transform-style: preserve-3d;
+  transition: transform 180ms ease-out;
+}
+
+.icon-3d {
+  transform: rotateX(14deg) rotateY(-18deg);
+}
+
+.service-card {
+  transform-style: preserve-3d;
+}
+
+.service-card:hover .icon-3d {
+  animation: icon-pop 800ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.magnetic:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 24px 70px rgba(103, 232, 249, .18);
+}
+
+.float-slow,
+.float-medium,
+.float-fast,
+.service-particle {
+  will-change: transform;
+}
+
+.float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+.float-medium {
+  animation: float 6s ease-in-out infinite reverse;
+}
+
+.float-fast {
+  animation: float 5s ease-in-out infinite;
+}
+
+.service-particle {
+  animation: particle 7s ease-in-out infinite;
+}
+
+.timeline-item {
+  animation: reveal linear both;
+  animation-timeline: view();
+  animation-range: entry 10% cover 35%;
+}
+
+.tech-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(.5rem, 1.5vw, .85rem);
+  perspective: 900px;
+}
+
+.tech-cloud span {
+  animation: tech-rise 7s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate3d(0, 0, 28px) rotateZ(0deg); }
+  50% { transform: translate3d(0, -18px, 70px) rotateZ(1deg); }
+}
+
+@keyframes particle {
+  0%, 100% { transform: translate3d(0, 0, 80px) rotate(0deg); opacity: .6; }
+  50% { transform: translate3d(12px, -22px, 140px) rotate(8deg); opacity: 1; }
+}
+
+@keyframes icon-pop {
+  0% { transform: rotateX(14deg) rotateY(-18deg) translateZ(0); }
+  55% { transform: rotateX(22deg) rotateY(-26deg) translateZ(28px) scale(1.08); }
+  100% { transform: rotateX(14deg) rotateY(-18deg) translateZ(0); }
+}
+
+@keyframes reveal {
+  from { opacity: .18; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tech-rise {
+  0%, 100% { transform: translateY(0) rotateX(0deg); }
+  50% { transform: translateY(-10px) rotateX(8deg); }
+}
+
+/* ============================================================
+   HERO VISUAL — scales per device class
+   ============================================================ */
+
+/* Small phones (iPhone SE, Galaxy S-mini) */
+@media (max-width: 400px) {
+  .hero-orbit {
+    min-height: 300px;
+  }
+
+  .hero-orbit .float-slow {
+    left: 0 !important;
+    top: 4% !important;
+    width: 88% !important;
+    padding: .75rem;
+  }
+
+  .hero-orbit .float-medium:first-of-type {
+    right: 0 !important;
+    top: 46% !important;
+    width: 58% !important;
+  }
+
+  .hero-orbit .float-fast {
+    left: 0 !important;
+    bottom: 4% !important;
+    font-size: .65rem;
+  }
+}
+
+/* Phones generally: kill cursor parallax (no pointer) and simplify depth */
+@media (max-width: 767px) {
+  .hero-orbit {
+    transform: none !important;
+    min-height: clamp(300px, 52vw + 180px, 430px);
+  }
+
+  .hero-orbit .service-particle {
+    display: none !important;
+  }
+}
+
+/* Landscape phones — vertical space is scarce, collapse the visual */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hero-orbit {
+    min-height: 260px;
+  }
+
+  .hero-orbit .float-fast,
+  .hero-orbit .service-particle {
+    display: none !important;
+  }
+
+  :root {
+    --section-y: clamp(2.5rem, 6vw, 4rem);
+  }
+}
+
+/* Tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-orbit {
+    min-height: 520px;
+  }
+}
+
+/* Large desktops and up — give the scene more room */
+@media (min-width: 1536px) {
+  .hero-orbit {
+    min-height: 700px;
+  }
+}
+
+/* ============================================================
+   INPUT MODALITY
+   ============================================================ */
+
+/* Touch / no hover: disable hover-only effects and enlarge tap targets */
+@media (hover: none) {
+  .magnetic:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .service-card:hover .icon-3d {
+    animation: none;
+  }
+
+  button,
+  a[href],
+  input[type="checkbox"],
+  label {
+    -webkit-tap-highlight-color: rgba(103, 232, 249, .15);
+  }
+}
+
+/* Coarse pointers get comfortable minimum hit areas (WCAG 2.5.8) */
+@media (pointer: coarse) {
+  nav button,
+  nav a,
+  footer button {
+    min-height: 44px;
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+
+  .hero-orbit {
+    transform: none !important;
+  }
+
+  .float-slow,
+  .float-medium,
+  .float-fast,
+  .service-particle,
+  .tech-cloud span {
+    animation: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .text-slate-300 { color: #e2e8f0; }
+  .text-slate-400 { color: #cbd5e1; }
+  .text-slate-500 { color: #b6c2d2; }
+}
+
+/* Print */
+@media print {
+  .hero-orbit,
+  nav,
+  footer { display: none; }
+
+  body { background: #fff; color: #000; }
+}
+
+/* ============================================================
+   PERFORMANCE: GPU compositing hints
+   ============================================================ */
+.hero-orbit,
+.float-slow,
+.float-medium,
+.float-fast,
+.service-particle,
+.tech-cloud span,
+.timeline-item,
+.service-card,
+.magnetic {
+  will-change: transform;
+  contain: layout style paint;
+}
+
+img,
+video {
+  contain: layout style paint;
+}
+
+/* Reduce paint work on large surfaces */
+.shell {
+  contain: layout;
+}
+
+/* ============================================================
+   PERFORMANCE: Font loading
+   ============================================================ */
+@font-face {
+  font-family: "Inter";
+  font-display: swap;
+  src: local("Inter");
+}
