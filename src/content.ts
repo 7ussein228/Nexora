@@ -399,7 +399,7 @@ export const defaultContent: SiteContent = {
       "id": "p1789662216762",
       "name": "Future Cinema",
       "url": "https://future-cinema.vercel.app/",
-      "image": "",
+      "image": "projects/p1789662216762-mu5sudba.jpg",
       "featured": true,
       "client": {
         "en": "Future Cinema",
