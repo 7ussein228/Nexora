@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bi, ProjectItem, ServiceItem, SiteContent, StatItem, TierItem } from "./content";
 import { defaultContent, exportContent, exportContentTs, resetContent } from "./content";
 import type { Dict, Lang } from "./i18n";
@@ -212,7 +212,25 @@ export default function AdminDashboard({
 
   const flash = (msg: string) => { setSaved(msg); window.setTimeout(() => setSaved(""), 2600); };
   const isDirty = JSON.stringify(draft) !== JSON.stringify(content);
-  const save = () => { setContent(draft); flash(lang === "ar" ? "تم الحفظ - اضغط View site للمشاهدة" : "Saved - click View site to see"); };
+  const pubBusy = useRef(false);
+  const [autoPub, setAutoPub] = useState("");
+  const save = () => {
+    const snapshot = draft;
+    setContent(snapshot);
+    flash(lang === "ar" ? "تم الحفظ - اضغط View site للمشاهدة" : "Saved - click View site to see");
+    // Auto-publish: Submit alone updates ALL devices when a token is saved.
+    const token = gh.token || loadGhSettings().token;
+    if (!token || pubBusy.current) return;
+    pubBusy.current = true;
+    setAutoPub(lang === "ar" ? "جارٍ النشر لكل الأجهزة…" : "Publishing to all devices…");
+    void publishSiteContent(snapshot, { ...gh, token }, (m) => setAutoPub(m))
+      .then(({ commitSha }) => {
+        setLastPub(getLastPublish());
+        setAutoPub(lang === "ar" ? `تم النشر (${commitSha.slice(0, 7)}) — مباشر خلال دقيقتين` : `Published (${commitSha.slice(0, 7)}) — live in ~2 min`);
+      })
+      .catch((e: unknown) => setAutoPub(e instanceof Error ? e.message : "Publish failed"))
+      .finally(() => { pubBusy.current = false; });
+  };
   const patchDraft = (partial: Partial<SiteContent>) => setDraft({ ...draft, ...partial });
   const resetDraft = () => setDraft(content);
 
@@ -274,10 +292,13 @@ export default function AdminDashboard({
 
   const SubmitBar = () => (
     <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/30 bg-slate-900/95 p-4 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
-      <p className="flex items-center gap-2 text-sm text-slate-300">
-        <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${isDirty ? "animate-pulse bg-amber-300" : "bg-emerald-400"}`} />
-        {isDirty ? (lang==="ar" ? "لديك تعديلات غير محفوظة" : "You have unsaved changes") : (lang==="ar" ? "كل التعديلات محفوظة" : "All changes saved")}
-      </p>
+      <div>
+        <p className="flex items-center gap-2 text-sm text-slate-300">
+          <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${isDirty ? "animate-pulse bg-amber-300" : "bg-emerald-400"}`} />
+          {isDirty ? (lang==="ar" ? "لديك تعديلات غير محفوظة" : "You have unsaved changes") : (lang==="ar" ? "كل التعديلات محفوظة" : "All changes saved")}
+        </p>
+        {autoPub ? <p className="mt-1.5 text-xs text-cyan-200" dir="ltr">🚀 {autoPub}</p> : null}
+      </div>
       <div className="flex gap-2">
         <button onClick={resetDraft} disabled={!isDirty} className="rounded-full border border-white/15 px-5 py-2.5 text-sm disabled:opacity-40 hover:bg-white/10">{lang==="ar" ? "تراجع" : "Discard"}</button>
         <button onClick={save} disabled={!isDirty} className="rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-7 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 disabled:opacity-40 hover:scale-[1.02]">{lang==="ar" ? "حفظ (Submit)" : "Submit / Save"}</button>
@@ -363,9 +384,13 @@ export default function AdminDashboard({
         <aside className="sticky top-24 hidden w-60 shrink-0 rounded-3xl border border-white/10 bg-white/[0.03] p-3 lg:block">
           <NavButtons vertical />
           <div className="mt-4 rounded-2xl bg-slate-900/80 p-3 text-xs leading-5 text-slate-400">
-            {lang === "ar"
-              ? "الحفظ للمعاينة في متصفحك. للنشر لكل الزوار استخدم تبويب البيانات والنسخ."
-              : "Saving previews in your browser. Publish for everyone via Data & Backup."}
+            {loadGhSettings().token || gh.token
+              ? (lang === "ar"
+                ? "التوكن محفوظ — زرار الحفظ (Submit) بينشر تعديلاتك تلقائياً لكل الأجهزة."
+                : "Token saved — Submit auto-publishes your edits to all devices.")
+              : (lang === "ar"
+                ? "احفظ توكن GitHub من تبويب البيانات والنسخ، وزرار الحفظ هينشر تلقائياً لكل الأجهزة."
+                : "Save a GitHub token in Data & Backup, and Submit will auto-publish to all devices.")}
           </div>
         </aside>
 
@@ -425,6 +450,7 @@ export default function AdminDashboard({
                       ? (lang === "ar" ? "عندك تعديلات للمعاينة فقط — دوس حفظ ثم نزّل ملف النشر من تبويب البيانات." : "You have preview-only edits — hit Submit, then download the publish file from Data & Backup.")
                       : (lang === "ar" ? "كل حاجة محفوظة ومتناسقة مع الموقع." : "Everything saved and in sync with the site.")}
                   </p>
+                  {autoPub ? <p className="mt-2 text-xs text-cyan-200" dir="ltr">🚀 {autoPub}</p> : null}
                   {isDirty ? <button onClick={save} className="mt-3 w-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-5 py-2.5 text-sm font-bold text-slate-950">{lang === "ar" ? "حفظ الآن" : "Save now"}</button> : null}
                 </div>
               </div>
