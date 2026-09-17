@@ -4,9 +4,10 @@ import { defaultContent, exportContent, exportContentTs, resetContent } from "./
 import type { Dict, Lang } from "./i18n";
 import { loadSubmissions, deleteSubmission, clearSubmissions, exportCSV, setSubmissionRead, markAllRead, type FormSubmission } from "./forms";
 
-type Tab = "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "forms" | "data";
+type Tab = "overview" | "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "forms" | "data";
 
 const tabs: Array<[Tab, string, string]> = [
+  ["overview", "Overview", "نظرة عامة"],
   ["hero", "Hero & About", "الرئيسية ومن نحن"],
   ["stats", "Statistics", "الإحصائيات"],
   ["services", "Services", "الخدمات"],
@@ -17,6 +18,18 @@ const tabs: Array<[Tab, string, string]> = [
   ["forms", "Forms", "الرسائل"],
   ["data", "Data & Backup", "البيانات والنسخ"],
 ];
+
+/** Sidebar grouping — turns 10 flat pills into 4 clear sections. */
+const navGroups: Array<{ en: string; ar: string; ids: Tab[] }> = [
+  { en: "Content", ar: "المحتوى", ids: ["hero", "stats", "services", "projects"] },
+  { en: "Sales", ar: "المبيعات", ids: ["tiers", "pricing", "forms"] },
+  { en: "Settings", ar: "الإعدادات", ids: ["contact", "data"] },
+];
+
+const tabLabel = (id: Tab, lang: Lang) => {
+  const found = tabs.find(([t]) => t === id);
+  return found ? (lang === "ar" ? found[2] : found[1]) : id;
+};
 
 /* ---------- small reusable field components ---------- */
 
@@ -88,6 +101,16 @@ function BiField({ label, value, onChange, area = false, rows = 3 }: { label: st
   );
 }
 
+function Stat({ label, value, sub, hot }: { label: string; value: string; sub?: string; hot?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-4 sm:p-5 ${hot ? "border-amber-300/30 bg-amber-300/[0.05]" : "border-white/10 bg-white/[0.04]"}`}>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <p className="mt-2 text-[clamp(1.5rem,4vw,2.1rem)] font-black leading-none text-white" dir="ltr">{value}</p>
+      {sub ? <p className="mt-2 text-xs leading-5 text-slate-500">{sub}</p> : null}
+    </div>
+  );
+}
+
 function Card({ title, children, onDelete }: { title: string; children: React.ReactNode; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
@@ -116,7 +139,7 @@ export default function AdminDashboard({
   t: Dict;
   lang: Lang;
 }) {
-  const [tab, setTab] = useState<Tab>("hero");
+  const [tab, setTab] = useState<Tab>("overview");
   const [saved, setSaved] = useState("");
   const [forms, setForms] = useState<FormSubmission[]>(() => loadSubmissions());
   const [draft, setDraft] = useState<SiteContent>(content);
@@ -192,27 +215,88 @@ export default function AdminDashboard({
   }, [forms, fq, fService, fStatus, fSort]);
   const unreadCount = forms.filter((f) => !f.read).length;
   const serviceNames = useMemo(() => Array.from(new Set(forms.map((f) => f.service).filter(Boolean))), [forms]);
+  const visibleServices = draft.services.filter((s) => s.visible !== false).length;
+  const featuredProjects = draft.projects.filter((p) => p.featured).length;
+  const quoteCap = draft.pricing.maxQuote > 0 ? draft.pricing.maxQuote : 30000;
+  const recentForms = useMemo(
+    () => [...forms].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5),
+    [forms]
+  );
+
+  const badges: Partial<Record<Tab, string>> = {
+    forms: unreadCount ? String(unreadCount) : "",
+    services: `${visibleServices}/${draft.services.length}`,
+  };
 
   const SubmitBar = () => (
-    <div className="sticky bottom-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/30 bg-slate-900/90 p-4 backdrop-blur-xl">
-      <p className="text-sm text-slate-300">{isDirty ? (lang==="ar" ? "لديك تعديلات غير محفوظة" : "You have unsaved changes") : (lang==="ar" ? "كل التعديلات محفوظة" : "All changes saved")}</p>
+    <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/30 bg-slate-900/95 p-4 shadow-2xl shadow-cyan-950/40 backdrop-blur-xl">
+      <p className="flex items-center gap-2 text-sm text-slate-300">
+        <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${isDirty ? "animate-pulse bg-amber-300" : "bg-emerald-400"}`} />
+        {isDirty ? (lang==="ar" ? "لديك تعديلات غير محفوظة" : "You have unsaved changes") : (lang==="ar" ? "كل التعديلات محفوظة" : "All changes saved")}
+      </p>
       <div className="flex gap-2">
         <button onClick={resetDraft} disabled={!isDirty} className="rounded-full border border-white/15 px-5 py-2.5 text-sm disabled:opacity-40 hover:bg-white/10">{lang==="ar" ? "تراجع" : "Discard"}</button>
-        <button onClick={save} disabled={!isDirty} className="rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-7 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-40 hover:scale-[1.02]">{lang==="ar" ? "حفظ (Submit)" : "Submit / Save"}</button>
+        <button onClick={save} disabled={!isDirty} className="rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-7 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 disabled:opacity-40 hover:scale-[1.02]">{lang==="ar" ? "حفظ (Submit)" : "Submit / Save"}</button>
       </div>
     </div>
+  );
+
+  const NavButtons = ({ vertical = false }: { vertical?: boolean }) => (
+    <>
+      <button
+        onClick={() => setTab("overview")}
+        aria-current={tab === "overview"}
+        className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm transition ${vertical ? "w-full text-start" : "whitespace-nowrap"} ${tab === "overview" ? "bg-cyan-300 font-bold text-slate-950" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}
+      >
+        <span aria-hidden="true">◉</span>{tabLabel("overview", lang)}
+      </button>
+      {navGroups.map((g) => (
+        <div key={g.en} className={vertical ? "mt-4" : ""}>
+          {vertical ? (
+            <p className="mb-1.5 px-3.5 text-[0.68rem] font-bold uppercase tracking-[0.2em] text-slate-500">{lang === "ar" ? g.ar : g.en}</p>
+          ) : null}
+          <div className={`flex gap-1.5 ${vertical ? "flex-col" : ""}`}>
+            {g.ids.map((id) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                aria-current={tab === id}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm transition ${vertical ? "w-full justify-between text-start" : "whitespace-nowrap"} ${tab === id ? "bg-cyan-300 font-bold text-slate-950" : "border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white"}`}
+              >
+                <span>{tabLabel(id, lang)}</span>
+                {badges[id] ? (
+                  <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${tab === id ? "bg-slate-950/15 text-slate-950" : "bg-cyan-300/15 text-cyan-200"}`} dir="ltr">{badges[id]}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
   );
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/95 backdrop-blur-xl">
-        <div className="safe-x mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
-          <div>
-            <p className="text-xs text-cyan-300">{t.admin.console}</p>
-            <h1 className="text-xl font-black" dir="ltr">NEXORA CMS</h1>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-8">
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-300 to-violet-400 text-sm font-black text-slate-950" dir="ltr">N</span>
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.2em] text-cyan-300">{t.admin.console}</p>
+              <h1 className="text-lg font-black leading-tight" dir="ltr">NEXORA CMS <span className="ms-2 hidden text-xs font-normal text-slate-500 sm:inline">/ {tabLabel(tab, lang)}</span></h1>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {isDirty ? (
+              <span className="flex items-center gap-1.5 rounded-full bg-amber-300/15 px-3 py-1.5 text-xs font-semibold text-amber-200">
+                <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" />{lang === "ar" ? "غير محفوظ" : "Unsaved"}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{lang === "ar" ? "محفوظ" : "Saved"}
+              </span>
+            )}
             {saved ? <span className="rounded-full bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300">{saved}</span> : null}
             <button onClick={onExit} className="rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/10">
               {lang === "ar" ? "عرض الموقع" : "View site"}
@@ -222,19 +306,87 @@ export default function AdminDashboard({
             </button>
           </div>
         </div>
-        {/* Tabs */}
-        <div className="safe-x mx-auto max-w-7xl overflow-x-auto px-4 pb-3 md:px-8">
-          <div className="flex gap-2">
-            {tabs.map(([id, en, ar]) => (
-              <button key={id} onClick={() => setTab(id)} aria-current={tab === id} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${tab === id ? "bg-cyan-300 font-semibold text-slate-950" : "border border-white/10 text-slate-300 hover:bg-white/10"}`}>
-                {lang === "ar" ? ar : en}
-              </button>
-            ))}
+        {/* Mobile nav */}
+        <div className="mx-auto max-w-7xl overflow-x-auto px-4 pb-3 md:px-8 lg:hidden">
+          <div className="flex gap-1.5">
+            <NavButtons />
           </div>
         </div>
       </header>
 
-      <main className="safe-x mx-auto max-w-5xl px-4 py-8 md:px-8">
+      <div className="mx-auto flex max-w-7xl items-start gap-6 px-4 py-6 md:px-8 md:py-8">
+        {/* Sidebar (desktop) */}
+        <aside className="sticky top-24 hidden w-60 shrink-0 rounded-3xl border border-white/10 bg-white/[0.03] p-3 lg:block">
+          <NavButtons vertical />
+          <div className="mt-4 rounded-2xl bg-slate-900/80 p-3 text-xs leading-5 text-slate-400">
+            {lang === "ar"
+              ? "الحفظ للمعاينة في متصفحك. للنشر لكل الزوار استخدم تبويب البيانات والنسخ."
+              : "Saving previews in your browser. Publish for everyone via Data & Backup."}
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 space-y-5">
+        {/* ---------------- OVERVIEW ---------------- */}
+        {tab === "overview" && (
+          <section className="space-y-5">
+            <div>
+              <h2 className="text-2xl font-black sm:text-3xl">{lang === "ar" ? "لوحة التحكم" : "Dashboard"}</h2>
+              <p className="mt-1 text-sm text-slate-400">{lang === "ar" ? "نبض الموقع في نظرة واحدة — الرسائل، الخدمات، الأسعار والنشر." : "Site health at a glance — inbox, services, pricing and publishing."}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Stat label={lang === "ar" ? "الرسائل" : "Leads"} value={String(forms.length)} sub={unreadCount ? (lang === "ar" ? `${unreadCount} غير مقروءة` : `${unreadCount} unread`) : (lang === "ar" ? "لا جديد غير مقروء" : "Inbox zero")} hot={unreadCount > 0} />
+              <Stat label={lang === "ar" ? "خدمات ظاهرة" : "Live services"} value={`${visibleServices}/${draft.services.length}`} sub={lang === "ar" ? "تُعرض على الموقع" : "Shown on site"} />
+              <Stat label={lang === "ar" ? "مشاريع معروضة" : "Featured work"} value={`${featuredProjects}/${draft.projects.length}`} sub={lang === "ar" ? "في قسم الأعمال" : "In portfolio"} />
+              <Stat label={lang === "ar" ? "سقف الحاسبة" : "Quote cap"} value={quoteCap.toLocaleString("en-EG")} sub={lang === "ar" ? "جنيه — أقصى تقدير" : "EGP — max estimate"} />
+            </div>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="font-bold">{lang === "ar" ? "أحدث الرسائل" : "Latest inquiries"}</h3>
+                  <button onClick={() => setTab("forms")} className="text-sm font-semibold text-cyan-300 hover:text-cyan-200">{lang === "ar" ? "عرض الكل ←" : "View all →"}</button>
+                </div>
+                {recentForms.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-500">{lang === "ar" ? "لا رسائل بعد." : "No inquiries yet."}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recentForms.map((f) => (
+                      <button key={f.id} onClick={() => setTab("forms")} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-start text-sm transition hover:border-cyan-300/40">
+                        <span className="min-w-0">
+                          <span className="flex items-center gap-2 font-semibold text-white">
+                            {!f.read ? <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-amber-300" /> : null}
+                            <span className="truncate">{f.name || f.email}</span>
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-slate-500">{f.service || "—"} · {new Date(f.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-cyan-300" dir="ltr">{f.id}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                  <h3 className="mb-3 font-bold">{lang === "ar" ? "إجراءات سريعة" : "Quick actions"}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setTab("services")} className="rounded-2xl border border-white/10 px-3 py-3 text-sm hover:bg-white/10">{lang === "ar" ? "الخدمات" : "Services"}</button>
+                    <button onClick={() => setTab("pricing")} className="rounded-2xl border border-white/10 px-3 py-3 text-sm hover:bg-white/10">{lang === "ar" ? "الحاسبة" : "Calculator"}</button>
+                    <button onClick={() => setTab("projects")} className="rounded-2xl border border-white/10 px-3 py-3 text-sm hover:bg-white/10">{lang === "ar" ? "المشاريع" : "Projects"}</button>
+                    <button onClick={() => setTab("data")} className="rounded-2xl border border-white/10 px-3 py-3 text-sm hover:bg-white/10">{lang === "ar" ? "النشر" : "Publish"}</button>
+                  </div>
+                </div>
+                <div className={`rounded-3xl border p-5 ${isDirty ? "border-amber-300/30 bg-amber-300/[0.05]" : "border-emerald-500/20 bg-emerald-500/[0.05]"}`}>
+                  <h3 className="font-bold">{lang === "ar" ? "حالة النشر" : "Publish status"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    {isDirty
+                      ? (lang === "ar" ? "عندك تعديلات للمعاينة فقط — دوس حفظ ثم نزّل ملف النشر من تبويب البيانات." : "You have preview-only edits — hit Submit, then download the publish file from Data & Backup.")
+                      : (lang === "ar" ? "كل حاجة محفوظة ومتناسقة مع الموقع." : "Everything saved and in sync with the site.")}
+                  </p>
+                  {isDirty ? <button onClick={save} className="mt-3 w-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 px-5 py-2.5 text-sm font-bold text-slate-950">{lang === "ar" ? "حفظ الآن" : "Save now"}</button> : null}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ---------------- HERO & ABOUT ---------------- */}
         {tab === "hero" && (
@@ -387,6 +539,14 @@ export default function AdminDashboard({
                 <p className="mt-1 text-sm text-slate-400">{lang === "ar" ? "كل الأسعار بالجنيه المصري. زوّد / احذف / غيّر الاسم والسعر — الحاسبة في الموقع تتحدث تلقائياً." : "All values in EGP. Add / delete / rename — the public calculator updates automatically."}</p>
               </div>
               <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-slate-300">{Object.keys(draft.pricing.websiteTypes).length} types · {Object.keys(draft.pricing.features).length} features</span>
+            </div>
+
+            <div className="rounded-2xl border border-amber-300/30 bg-amber-300/[0.05] p-5">
+              <h3 className="mb-1 font-bold">{lang === "ar" ? "سقف التقدير (الحد الأقصى)" : "Estimate cap"}</h3>
+              <p className="mb-4 text-xs leading-5 text-slate-400">{lang === "ar" ? "مهما كانت الاختيارات، التقدير الظاهر للزائر لن يتجاوز هذا الرقم. الحالي: ٣٠٬٠٠٠ ج." : "No matter the selections, the visitor-facing estimate never exceeds this. Currently 30,000 EGP."}</p>
+              <div className="max-w-xs">
+                <Field label={lang === "ar" ? "الحد الأقصى (جنيه)" : "Max quote (EGP)"} type="number" value={draft.pricing.maxQuote ?? 30000} onChange={(v) => patchDraft({ pricing: { ...draft.pricing, maxQuote: Math.max(1000, Number(v) || 30000) } })} />
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
@@ -646,7 +806,8 @@ export default function AdminDashboard({
             </div>
           </section>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

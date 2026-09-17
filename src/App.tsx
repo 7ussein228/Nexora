@@ -156,11 +156,15 @@ function QuoteBuilder({ content, t, lang }: { content: SiteContent; t: Dict; lan
   const [features, setFeatures] = useState<string[]>(["SEO optimization"]);
   const [design, setDesign] = useState("Professional");
 
-  const total = useMemo(() => {
+  const cap = rules.maxQuote > 0 ? rules.maxQuote : 30000;
+  const rawTotal = useMemo(() => {
     const base = rules.websiteTypes[type] ?? 0;
     const feat = features.reduce((s, i) => s + (rules.features[i] ?? 0), 0);
     return Math.round((base + Math.max(pages - 1, 0) * rules.pagePrice + feat) * (rules.designLevels[design] ?? 1));
   }, [design, features, pages, rules, type]);
+  const capped = rawTotal > cap;
+  const total = Math.min(rawTotal, cap);
+  const pct = Math.max(4, Math.min(100, Math.round((total / cap) * 100)));
 
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:gap-6">
@@ -197,6 +201,16 @@ function QuoteBuilder({ content, t, lang }: { content: SiteContent; t: Dict; lan
       <aside className="h-fit rounded-3xl border border-cyan-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur-2xl sm:rounded-[2rem] sm:p-6 md:p-8 lg:sticky lg:top-28">
         <p className="text-xs uppercase tracking-[0.24em] text-cyan-200 sm:text-sm">{t.builder.estimate}</p>
         <p className="mt-4 text-[clamp(1.75rem,6vw,3rem)] font-black leading-none tracking-tight text-white sm:mt-5">{fmtMoney(total, lang)}</p>
+        {capped ? (
+          <p className="mt-3 w-fit rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-200">
+            {lang === "ar" ? `الحد الأقصى ${fmtMoney(cap, lang)}` : `Capped at ${fmtMoney(cap, lang)}`}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs text-slate-500">{lang === "ar" ? `الحد الأقصى ${fmtMoney(cap, lang)}` : `Max ${fmtMoney(cap, lang)}`}</p>
+        )}
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={t.builder.estimate}>
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 transition-all" style={{ width: `${pct}%` }} />
+        </div>
         <p className="mt-4 text-sm leading-6 text-slate-300">{t.builder.note}</p>
         <a href="#contact" className="magnetic mt-8 inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-4 font-semibold text-slate-950 transition hover:bg-cyan-200">{t.cta.request}</a>
       </aside>

@@ -69,6 +69,8 @@ export type SiteContent = {
     pagePrice: number;
     features: Record<string, number>;
     designLevels: Record<string, number>;
+    /** Hard ceiling (EGP) for the public quote estimate. Admin-editable. */
+    maxQuote: number;
   };
 };
 
@@ -192,7 +194,7 @@ export const defaultContent: SiteContent = {
   tiers: [
     { id: "t1", name: "STARTER", highlight: false, price: { en: "EGP 5,000", ar: "٥٬٠٠٠ ج.م" }, desc: { en: "For small businesses and simple websites.", ar: "للشركات الصغيرة والمواقع البسيطة." } },
     { id: "t2", name: "PROFESSIONAL", highlight: false, price: { en: "EGP 15,000", ar: "١٥٬٠٠٠ ج.م" }, desc: { en: "For businesses requiring advanced functionality.", ar: "للشركات التي تحتاج وظائف متقدمة." } },
-    { id: "t3", name: "PREMIUM", highlight: true, price: { en: "EGP 50,000", ar: "٥٠٬٠٠٠ ج.م" }, desc: { en: "For advanced websites, e-commerce and custom systems.", ar: "للمواقع المتقدمة والمتاجر والأنظمة المخصصة." } },
+    { id: "t3", name: "PREMIUM", highlight: true, price: { en: "EGP 30,000", ar: "٣٠٬٠٠٠ ج.م" }, desc: { en: "For advanced websites, e-commerce and custom systems.", ar: "للمواقع المتقدمة والمتاجر والأنظمة المخصصة." } },
     { id: "t4", name: "ENTERPRISE", highlight: false, price: { en: "Custom Pricing", ar: "سعر مخصص" }, desc: { en: "For large platforms and complex business systems.", ar: "للمنصات الكبيرة وأنظمة الأعمال المعقدة." } },
   ],
 
@@ -207,10 +209,11 @@ export const defaultContent: SiteContent = {
   },
 
   pricing: {
-    websiteTypes: { "Landing Page": 5000, "Business Website": 12000, Portfolio: 9000, "Restaurant Website": 14000, "Real Estate Website": 18000, "Booking Website": 24000, "E-commerce": 35000, Marketplace: 70000, "Learning Platform": 85000, "Web Application": 95000, "Custom Enterprise Platform": 180000 },
-    pagePrice: 1200,
-    features: { "Customer accounts": 9000, "Admin dashboard": 14000, "Online payments": 12000, "Vodafone Cash": 6500, Paymob: 8000, "Booking system": 15000, "Product management": 11000, "Order management": 12000, Notifications: 7000, "Email integration": 4500, "WhatsApp integration": 6000, "AI chatbot": 18000, "Search system": 9000, Reviews: 5000, Analytics: 6500, "Multi-language": 10000, "Multi-currency": 9000, "API integrations": 15000, "Custom database": 18000, "Advanced security": 16000, CMS: 10000, "SEO optimization": 7500 },
-    designLevels: { Starter: 1, Professional: 1.35, Premium: 1.9, Enterprise: 2.8 },
+    websiteTypes: { "Landing Page": 4000, "Business Website": 8000, Portfolio: 6000, "Restaurant Website": 9000, "Real Estate Website": 11000, "Booking Website": 14000, "E-commerce": 18000, Marketplace: 20000, "Learning Platform": 20000, "Web Application": 22000, "Custom Enterprise Platform": 25000 },
+    pagePrice: 500,
+    features: { "Customer accounts": 3500, "Admin dashboard": 5500, "Online payments": 5000, "Vodafone Cash": 2500, Paymob: 3000, "Booking system": 6000, "Product management": 4500, "Order management": 5000, Notifications: 2500, "Email integration": 1800, "WhatsApp integration": 2500, "AI chatbot": 7000, "Search system": 3500, Reviews: 2000, Analytics: 2500, "Multi-language": 4000, "Multi-currency": 3500, "API integrations": 6000, "Custom database": 7000, "Advanced security": 6500, CMS: 4000, "SEO optimization": 3000 },
+    designLevels: { Starter: 1, Professional: 1.2, Premium: 1.45, Enterprise: 1.8 },
+    maxQuote: 30000,
   },
 };
 
