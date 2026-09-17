@@ -1,6 +1,6 @@
-import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, memo, useRef, useState } from "react";
+import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, memo, useRef, useState, type ReactElement } from "react";
 import { dict, fmtMoney, fmtNum, type Dict, type Lang } from "./i18n";
-import { loadContent, saveContent, type Bi, type ProjectItem, type SiteContent } from "./content";
+import { loadContent, saveContent, type Bi, type ProjectItem, type ServiceItem, type SiteContent } from "./content";
 import { saveSubmission } from "./forms";
 
 const AdminDashboard = lazy(() => import("./Admin"));
@@ -57,12 +57,53 @@ function SectionTitle({ label, title, copy }: { label: string; title: string; co
   );
 }
 
-function ThreeIcon({ children, accent }: { children: string; accent: string }) {
+const SERVICE_ICONS: Record<string, ReactElement> = {
+  code: (<><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>),
+  store: (<><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></>),
+  app: (<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /></>),
+  pen: (<><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></>),
+  mega: (<><path d="m3 11 18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></>),
+  palette: (<><circle cx="13.5" cy="6.5" r=".5" /><circle cx="17.5" cy="10.5" r=".5" /><circle cx="8.5" cy="7.5" r=".5" /><circle cx="6.5" cy="12.5" r=".5" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.68-.75 1.68-1.68 0-.44-.16-.84-.44-1.14-.28-.3-.44-.7-.44-1.14A1.68 1.68 0 0 1 14.48 16h2.24A5.28 5.28 0 0 0 22 10.75C21.99 5.9 17.5 2 12 2z" /></>),
+  chart: (<><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M7 13l3 3 7-7" /></>),
+  bot: (<><path d="M12 8V4H8" /><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></>),
+};
+
+function ServiceGlyph({ icon }: { icon: string }) {
+  const key = (icon || "").toLowerCase();
+  const body =
+    SERVICE_ICONS[key] ??
+    SERVICE_ICONS[
+      key.includes("code") || key.includes("</") ? "code"
+      : key.includes("bag") || key.includes("store") || key.includes("shop") ? "store"
+      : key.includes("app") || key.includes("dash") ? "app"
+      : key.includes("ux") || key.includes("pen") || key.includes("design") ? "pen"
+      : key.includes("soc") || key.includes("mega") || key.includes("share") ? "mega"
+      : key.includes("brand") || key.includes("palette") || key.includes("id") ? "palette"
+      : key.includes("seo") || key.includes("chart") || key.includes("search") ? "chart"
+      : key.includes("ai") || key.includes("bot") ? "bot"
+      : "code"
+    ];
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7" aria-hidden="true">
+      {body}
+    </svg>
+  );
+}
+
+function ServiceBadge({ accent, icon }: { accent: string; icon: string }) {
   return (
     <div className="icon-3d relative h-16 w-16 shrink-0 rounded-2xl bg-white/10 p-[1px] shadow-2xl shadow-cyan-950/40">
-      <div className={`flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-br ${accent} px-1 text-center text-[0.7rem] font-black uppercase leading-tight text-slate-950`} dir="ltr">{children}</div>
+      <div className={`flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-br ${accent} text-slate-950`} dir="ltr">
+        <ServiceGlyph icon={icon} />
+      </div>
     </div>
   );
+}
+
+/** Split bilingual highlights textarea into clean bullet lines. */
+function highlightLines(v: Bi, lang: Lang): string[] {
+  const raw = bi(v, lang);
+  return raw.split(/\r?\n|·|•/).map((s) => s.trim()).filter(Boolean).slice(0, 5);
 }
 
 const HeroVisual = memo(function HeroVisual({ t }: { t: Dict }) {
@@ -102,7 +143,7 @@ const HeroVisual = memo(function HeroVisual({ t }: { t: Dict }) {
         <pre className="text-xs leading-6 text-cyan-100"><code>{`const growth = await NEXORA.launch({\n  brand, platform, aiAutomation\n});`}</code></pre>
       </div>
       <div className="float-medium absolute bottom-[17%] right-[18%] w-52 rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl">
-        <div className="flex items-center gap-3"><ThreeIcon accent="from-pink-300 to-cyan-300">AI</ThreeIcon><div><p className="text-sm font-semibold text-white">{t.hero.bot}</p><p className="text-xs text-slate-300">{t.hero.botSub}</p></div></div>
+        <div className="flex items-center gap-3"><ServiceBadge accent="from-pink-300 to-cyan-300" icon="bot" /><div><p className="text-sm font-semibold text-white">{t.hero.bot}</p><p className="text-xs text-slate-300">{t.hero.botSub}</p></div></div>
       </div>
     </div>
   );
@@ -336,6 +377,45 @@ function SignupPage({ onSwitchToLogin, t }: { onSwitchToLogin: () => void; t: Di
   );
 }
 
+function ServiceModal({ s, index, onClose, t, lang }: { s: ServiceItem; index: number; onClose: () => void; t: Dict; lang: Lang }) {
+  const lines = highlightLines(s.highlights, lang);
+  const badge = bi(s.badge ?? { en: "", ar: "" }, lang).trim();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={bi(s.name, lang)} onClick={onClose} className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-950/90 p-3 backdrop-blur-xl sm:p-4">
+      <article onClick={(e) => e.stopPropagation()} className="mx-auto my-4 max-w-2xl rounded-3xl border border-white/10 bg-slate-950 p-5 text-white shadow-2xl sm:my-8 sm:rounded-[2rem] sm:p-8">
+        <div className="flex items-start justify-between gap-3">
+          <ServiceBadge accent={s.accent} icon={s.icon} />
+          <button onClick={onClose} className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:bg-white/10">{t.cta.close}</button>
+        </div>
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">
+          {String(index + 1).padStart(2, "0")} — {t.nav.services}{badge ? ` · ${badge}` : ""}
+        </p>
+        <h2 className="mt-2 text-[clamp(1.6rem,5vw,2.5rem)] font-black leading-tight">{bi(s.name, lang)}</h2>
+        <p className="mt-3 leading-relaxed text-slate-300">{bi(s.blurb, lang)}</p>
+        {lines.length ? (
+          <ul className="mt-6 space-y-2.5">
+            {lines.map((l) => (
+              <li key={l} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
+                <span aria-hidden="true" className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/20 text-xs font-black text-emerald-300">✓</span>
+                {l}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900/80 p-4">
+          <p className="font-bold text-cyan-200">{bi(s.price, lang) || t.services.customScope}</p>
+          <a href="#contact" onClick={onClose} className="rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950 hover:bg-cyan-200">{t.cta.request}</a>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 function CaseStudy({ p, onClose, t, lang }: { p: ProjectItem; onClose: () => void; t: Dict; lang: Lang }) {
   const f = t.portfolio.fields;
   const rows: Array<[string, string]> = [
@@ -446,6 +526,7 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [toast, setToast] = useState("");
   const [activeCase, setActiveCase] = useState<ProjectItem | null>(null);
+  const [activeService, setActiveService] = useState<{ s: ServiceItem; i: number } | null>(null);
 
   const setLang = useCallback((n: Lang) => {
     setLangState(n);
@@ -479,6 +560,7 @@ export default function App() {
   if (view !== "home") return <>{chrome}<PaymentStatus status={view} t={t} /></>;
 
   const shown = content.projects.filter((p) => p.featured);
+  const visibleServices = content.services.filter((s) => s.visible !== false);
 
   return (
     <div id="home" className="min-h-screen overflow-hidden bg-slate-950 text-white selection:bg-cyan-200 selection:text-slate-950">
@@ -520,15 +602,36 @@ export default function App() {
           <div className="shell">
             <SectionTitle label={t.services.label} title={t.services.title} copy={t.services.copy} />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {content.services.map((s) => (
-                <article key={s.id} className="service-card group rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-cyan-300/40 hover:bg-white/[0.08] sm:rounded-[2rem] sm:p-6">
-                  <ThreeIcon accent={s.accent}>{s.icon}</ThreeIcon>
-                  <h3 className="mt-6 text-xl font-bold sm:mt-7 sm:text-2xl">{bi(s.name, lang)}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-300 sm:min-h-24">{bi(s.blurb, lang)}</p>
-                  {bi(s.price, lang) ? <p className="mt-4 font-semibold text-cyan-200">{bi(s.price, lang)}</p> : <p className="mt-4 text-slate-500">{t.services.customScope}</p>}
-                  <a href="#contact" className="mt-5 inline-block text-sm font-bold text-white underline decoration-cyan-300/40 underline-offset-8 transition group-hover:text-cyan-200 sm:mt-6">{t.cta.exploreService}</a>
-                </article>
-              ))}
+              {visibleServices.map((s, i) => {
+                const badge = bi(s.badge ?? { en: "", ar: "" }, lang).trim();
+                const pts = highlightLines(s.highlights, lang).slice(0, 3);
+                return (
+                  <article key={s.id} className="service-card group relative flex flex-col rounded-3xl border border-white/10 bg-white/[0.05] p-5 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-cyan-300/40 hover:bg-white/[0.08] hover:shadow-2xl hover:shadow-cyan-950/50 sm:rounded-[2rem] sm:p-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <ServiceBadge accent={s.accent} icon={s.icon} />
+                      <span className="text-xs font-black text-slate-600" dir="ltr">{String(i + 1).padStart(2, "0")}</span>
+                    </div>
+                    {badge ? (
+                      <span className="mt-4 w-fit rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[0.7rem] font-bold text-cyan-200">{badge}</span>
+                    ) : null}
+                    <h3 className="mt-4 text-xl font-bold sm:text-2xl">{bi(s.name, lang)}</h3>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">{bi(s.blurb, lang)}</p>
+                    {pts.length ? (
+                      <ul className="mt-4 space-y-1.5">
+                        {pts.map((p) => (
+                          <li key={p} className="flex items-start gap-2 text-[0.83rem] leading-5 text-slate-300">
+                            <span aria-hidden="true" className="mt-0.5 text-emerald-300">✓</span><span className="flex-1">{p}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    <div className="mt-auto pt-4">
+                      {bi(s.price, lang) ? <p className="font-semibold text-cyan-200">{bi(s.price, lang)}</p> : <p className="text-slate-500">{t.services.customScope}</p>}
+                      <button onClick={() => setActiveService({ s, i })} className="mt-4 inline-block text-sm font-bold text-white underline decoration-cyan-300/40 underline-offset-8 transition group-hover:text-cyan-200">{t.cta.exploreService}</button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -705,7 +808,7 @@ export default function App() {
             <div>
               <h3 className="font-bold text-white">{t.footer.cols.services}</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-400">
-                {content.services.slice(0, 4).map((s) => <p key={s.id}>{bi(s.name, lang)}</p>)}
+                {visibleServices.slice(0, 4).map((s) => <p key={s.id}>{bi(s.name, lang)}</p>)}
               </div>
             </div>
             <div>
@@ -736,6 +839,7 @@ export default function App() {
 
       {toast ? <div role="status" aria-live="polite" className="fixed bottom-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-2xl border border-cyan-300/30 bg-slate-950/95 p-4 text-center text-cyan-100 shadow-2xl backdrop-blur-xl">{toast}</div> : null}
       {activeCase ? <CaseStudy p={activeCase} onClose={() => setActiveCase(null)} t={t} lang={lang} /> : null}
+      {activeService ? <ServiceModal s={activeService.s} index={activeService.i} onClose={() => setActiveService(null)} t={t} lang={lang} /> : null}
     </div>
   );
 }

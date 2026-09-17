@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Bi, ProjectItem, ServiceItem, SiteContent, StatItem, TierItem } from "./content";
-import { defaultContent, exportContent, resetContent } from "./content";
+import { defaultContent, exportContent, exportContentTs, resetContent } from "./content";
 import type { Dict, Lang } from "./i18n";
-import { loadSubmissions, deleteSubmission, clearSubmissions, exportCSV, type FormSubmission } from "./forms";
+import { loadSubmissions, deleteSubmission, clearSubmissions, exportCSV, setSubmissionRead, markAllRead, type FormSubmission } from "./forms";
 
 type Tab = "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "forms" | "data";
 
@@ -19,6 +19,44 @@ const tabs: Array<[Tab, string, string]> = [
 ];
 
 /* ---------- small reusable field components ---------- */
+
+const ICON_OPTIONS = [
+  ["code", "Code — Websites"],
+  ["store", "Store — E-commerce"],
+  ["app", "App — Dashboards"],
+  ["pen", "Pen — UI/UX"],
+  ["mega", "Megaphone — Social"],
+  ["palette", "Palette — Branding"],
+  ["chart", "Chart — SEO"],
+  ["bot", "Bot — AI"],
+] as const;
+
+const GRADIENT_OPTIONS = [
+  "from-cyan-300 to-blue-500",
+  "from-fuchsia-300 to-violet-500",
+  "from-emerald-300 to-teal-500",
+  "from-amber-200 to-orange-500",
+  "from-pink-300 to-rose-500",
+  "from-indigo-300 to-sky-500",
+  "from-lime-300 to-green-500",
+  "from-violet-300 to-cyan-400",
+] as const;
+
+function Select({ label, value, onChange, options, hint }: { label: string; value: string; onChange: (v: string) => void; options: ReadonlyArray<readonly [string, string] | string>; hint?: string }) {
+  return (
+    <label className="block text-sm">
+      <span className="text-slate-300">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-cyan-300">
+        {options.map((o) => {
+          const v = Array.isArray(o) ? o[0] : o;
+          const l = Array.isArray(o) ? o[1] : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+      {hint ? <span className="mt-1 block text-xs text-slate-500">{hint}</span> : null}
+    </label>
+  );
+}
 
 function Field({ label, value, onChange, type = "text", hint }: { label: string; value: string | number; onChange: (v: string) => void; type?: string; hint?: string }) {
   return (
@@ -82,6 +120,18 @@ export default function AdminDashboard({
   const [saved, setSaved] = useState("");
   const [forms, setForms] = useState<FormSubmission[]>(() => loadSubmissions());
   const [draft, setDraft] = useState<SiteContent>(content);
+  // forms inbox filters
+  const [fq, setFq] = useState("");
+  const [fService, setFService] = useState("all");
+  const [fStatus, setFStatus] = useState<"all" | "unread" | "read">("all");
+  const [fSort, setFSort] = useState<"new" | "old">("new");
+  // pricing add-row inputs
+  const [newTypeK, setNewTypeK] = useState("");
+  const [newTypeV, setNewTypeV] = useState("10000");
+  const [newFeatK, setNewFeatK] = useState("");
+  const [newFeatV, setNewFeatV] = useState("5000");
+  const [newLevelK, setNewLevelK] = useState("");
+  const [newLevelV, setNewLevelV] = useState("1.5");
   useEffect(() => setDraft(content), [content]);
   useEffect(() => {
     const onUpdate = () => setForms(loadSubmissions());
@@ -103,6 +153,45 @@ export default function AdminDashboard({
     list.map((item) => (item.id === id ? { ...item, ...changes } : item));
 
   const emptyBi: Bi = { en: "", ar: "" };
+
+  const moveService = (id: string, dir: -1 | 1) => {
+    const i = draft.services.findIndex((s) => s.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= draft.services.length) return;
+    const next = [...draft.services];
+    const [it] = next.splice(i, 1);
+    next.splice(j, 0, it);
+    patchDraft({ services: next });
+  };
+  const duplicateService = (id: string) => {
+    const src = draft.services.find((s) => s.id === id);
+    if (!src) return;
+    const copy: ServiceItem = { ...src, id: `sv${Date.now()}`, name: { en: `${src.name.en} (copy)`, ar: `${src.name.ar} (نسخة)` } };
+    patchDraft({ services: [...draft.services, copy] });
+  };
+
+  const renameKey = (obj: Record<string, number>, oldK: string, newK: string) => {
+    const clean = newK.trim();
+    if (!clean || clean === oldK || obj[clean] !== undefined) return obj;
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(obj)) out[k === oldK ? clean : k] = v;
+    return out;
+  };
+
+  const filteredForms = useMemo(() => {
+    const q = fq.trim().toLowerCase();
+    let list = forms.filter((f) => {
+      if (fStatus === "unread" && f.read) return false;
+      if (fStatus === "read" && !f.read) return false;
+      if (fService !== "all" && f.service !== fService) return false;
+      if (!q) return true;
+      return [f.id, f.name, f.email, f.phone, f.company, f.business, f.service, f.budget, f.description].join(" ").toLowerCase().includes(q);
+    });
+    list = [...list].sort((a, b) => (fSort === "new" ? +new Date(b.createdAt) - +new Date(a.createdAt) : +new Date(a.createdAt) - +new Date(b.createdAt)));
+    return list;
+  }, [forms, fq, fService, fStatus, fSort]);
+  const unreadCount = forms.filter((f) => !f.read).length;
+  const serviceNames = useMemo(() => Array.from(new Set(forms.map((f) => f.service).filter(Boolean))), [forms]);
 
   const SubmitBar = () => (
     <div className="sticky bottom-0 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/30 bg-slate-900/90 p-4 backdrop-blur-xl">
@@ -187,18 +276,40 @@ export default function AdminDashboard({
         {/* ---------------- SERVICES ---------------- */}
         {tab === "services" && (
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">{lang === "ar" ? "الخدمات" : "Services"}</h2>
-              <button onClick={() => patchDraft({ services: [...draft.services, { id: `sv${Date.now()}`, name: { ...emptyBi }, blurb: { ...emptyBi }, price: { ...emptyBi }, accent: "from-cyan-300 to-blue-500", icon: "new" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold">{lang === "ar" ? "الخدمات" : "Services"}</h2>
+                <p className="mt-1 text-sm text-slate-400">{draft.services.filter((s) => s.visible !== false).length} / {draft.services.length} {lang === "ar" ? "ظاهرة على الموقع" : "visible on site"} · {lang === "ar" ? "رتب بالأسهم، وكرر، وأخفِ بدون حذف" : "Reorder, duplicate, hide without deleting"}</p>
+              </div>
+              <button onClick={() => patchDraft({ services: [...draft.services, { id: `sv${Date.now()}`, name: { ...emptyBi }, blurb: { ...emptyBi }, price: { ...emptyBi }, highlights: { ...emptyBi }, badge: { ...emptyBi }, visible: true, accent: "from-cyan-300 to-blue-500", icon: "code" }] })} className="rounded-full bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950">+ Add</button>
             </div>
-            {draft.services.map((s: ServiceItem) => (
-              <Card key={s.id} title={s.name.en || "Untitled service"} onDelete={() => patchDraft({ services: draft.services.filter((x) => x.id !== s.id) })}>
+            {draft.services.map((s: ServiceItem, idx: number) => (
+              <Card key={s.id} title={`${s.visible === false ? "🚫 " : ""}${s.name.en || "Untitled service"}`} onDelete={() => patchDraft({ services: draft.services.filter((x) => x.id !== s.id) })}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={() => moveService(s.id, -1)} disabled={idx === 0} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs disabled:opacity-30 hover:bg-white/10">↑ {lang === "ar" ? "فوق" : "Up"}</button>
+                  <button onClick={() => moveService(s.id, 1)} disabled={idx === draft.services.length - 1} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs disabled:opacity-30 hover:bg-white/10">↓ {lang === "ar" ? "تحت" : "Down"}</button>
+                  <button onClick={() => duplicateService(s.id)} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:bg-white/10">{lang === "ar" ? "تكرار" : "Duplicate"}</button>
+                  <label className="ms-auto flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                    <input type="checkbox" checked={s.visible !== false} onChange={(e) => patchDraft({ services: updateList(draft.services, s.id, { visible: e.target.checked }) })} className="h-4 w-4 accent-cyan-300" />
+                    {lang === "ar" ? "ظاهرة على الموقع" : "Visible"}
+                  </label>
+                </div>
                 <BiField label="Name" value={s.name} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { name: v }) })} />
                 <BiField label="Description" value={s.blurb} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { blurb: v }) })} area />
+                <BiField label="Deliverables (one per line)" value={s.highlights} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { highlights: v }) })} area rows={4} />
                 <BiField label="Starting price (leave blank for 'Custom scope')" value={s.price} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { price: v }) })} />
+                <BiField label="Badge (optional, e.g. Most requested)" value={s.badge ?? { en: "", ar: "" }} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { badge: v }) })} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Icon text" value={s.icon} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { icon: v }) })} hint="Short label shown in the 3D tile" />
-                  <Field label="Gradient" value={s.accent} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { accent: v }) })} hint="Tailwind: from-cyan-300 to-blue-500" />
+                  <Select label="Icon" value={s.icon} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { icon: v }) })} options={ICON_OPTIONS} hint="Professional SVG icon shown on the site" />
+                  <Select label="Gradient" value={s.accent} onChange={(v) => patchDraft({ services: updateList(draft.services, s.id, { accent: v }) })} options={GRADIENT_OPTIONS} hint="Card accent gradient" />
+                </div>
+                <div className={`rounded-xl border border-white/10 bg-gradient-to-br ${s.accent} p-[1px]`}>
+                  <div className="rounded-[0.7rem] bg-slate-950/90 p-3 text-sm">
+                    <p className="text-xs text-slate-500">{lang === "ar" ? "معاينة حية" : "Live preview"}</p>
+                    <p className="mt-1 font-bold text-white">{s.name[lang] || s.name.en || "—"}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-slate-400">{s.blurb[lang] || s.blurb.en || "—"}</p>
+                    <p className="mt-1 text-xs font-semibold text-cyan-300">{s.price[lang] || s.price.en || (lang === "ar" ? "نطاق مخصص" : "Custom scope")}</p>
+                  </div>
                 </div>
               </Card>
             ))}
@@ -270,15 +381,30 @@ export default function AdminDashboard({
         {/* ---------------- QUOTE CALCULATOR ---------------- */}
         {tab === "pricing" && (
           <section className="space-y-6">
-            <h2 className="text-2xl font-bold">{lang === "ar" ? "حاسبة الأسعار" : "Quote Calculator"}</h2>
-            <p className="text-sm text-slate-400">{lang === "ar" ? "كل الأسعار بالجنيه المصري. الحاسبة في الموقع تستخدم هذه القيم مباشرة." : "All values in EGP. The public calculator reads these directly."}</p>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold">{lang === "ar" ? "حاسبة الأسعار" : "Quote Calculator"}</h2>
+                <p className="mt-1 text-sm text-slate-400">{lang === "ar" ? "كل الأسعار بالجنيه المصري. زوّد / احذف / غيّر الاسم والسعر — الحاسبة في الموقع تتحدث تلقائياً." : "All values in EGP. Add / delete / rename — the public calculator updates automatically."}</p>
+              </div>
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-slate-300">{Object.keys(draft.pricing.websiteTypes).length} types · {Object.keys(draft.pricing.features).length} features</span>
+            </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <h3 className="mb-4 font-bold">Website types</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <h3 className="mb-1 font-bold">Website types</h3>
+              <p className="mb-4 text-xs text-slate-500">{lang === "ar" ? "غيّر الاسم الإنجليزي وسيظهر كما هو للزائر (مع ترجمة تلقائية إن وجدت)." : "Rename the English key; it shows as-is with auto-translation when available."}</p>
+              <div className="space-y-2">
                 {Object.entries(draft.pricing.websiteTypes).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, websiteTypes: { ...draft.pricing.websiteTypes, [k]: Number(nv) } } })} />
+                  <div key={k} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_40px]">
+                    <input value={k} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, websiteTypes: renameKey(draft.pricing.websiteTypes, k, e.target.value) } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                    <input type="number" min={0} value={v} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, websiteTypes: { ...draft.pricing.websiteTypes, [k]: Number(e.target.value) } } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                    <button onClick={() => { const o = { ...draft.pricing.websiteTypes }; delete o[k]; patchDraft({ pricing: { ...draft.pricing, websiteTypes: o } }); }} className="rounded-xl border border-red-500/30 px-2 text-red-300 hover:bg-red-500/10" aria-label={`Delete ${k}`}>×</button>
+                  </div>
                 ))}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+                <input value={newTypeK} onChange={(e) => setNewTypeK(e.target.value)} placeholder={lang === "ar" ? "اسم نوع جديد…" : "New type name…"} className="w-full rounded-xl border border-dashed border-white/20 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                <input type="number" min={0} value={newTypeV} onChange={(e) => setNewTypeV(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                <button onClick={() => { const k = newTypeK.trim(); if (!k || draft.pricing.websiteTypes[k] !== undefined) return; patchDraft({ pricing: { ...draft.pricing, websiteTypes: { ...draft.pricing.websiteTypes, [k]: Number(newTypeV) || 0 } } }); setNewTypeK(""); }} className="rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950">+ {lang === "ar" ? "إضافة" : "Add"}</button>
               </div>
             </div>
 
@@ -288,20 +414,40 @@ export default function AdminDashboard({
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <h3 className="mb-4 font-bold">Features</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <h3 className="mb-1 font-bold">Features</h3>
+              <p className="mb-4 text-xs text-slate-500">{lang === "ar" ? "أي feature جديدة تظهر فوراً في حاسبة الموقع." : "New features appear instantly in the public calculator."}</p>
+              <div className="space-y-2">
                 {Object.entries(draft.pricing.features).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, features: { ...draft.pricing.features, [k]: Number(nv) } } })} />
+                  <div key={k} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_40px]">
+                    <input value={k} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, features: renameKey(draft.pricing.features, k, e.target.value) } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                    <input type="number" min={0} value={v} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, features: { ...draft.pricing.features, [k]: Number(e.target.value) } } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                    <button onClick={() => { const o = { ...draft.pricing.features }; delete o[k]; patchDraft({ pricing: { ...draft.pricing, features: o } }); }} className="rounded-xl border border-red-500/30 px-2 text-red-300 hover:bg-red-500/10" aria-label={`Delete ${k}`}>×</button>
+                  </div>
                 ))}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+                <input value={newFeatK} onChange={(e) => setNewFeatK(e.target.value)} placeholder={lang === "ar" ? "ميزة جديدة…" : "New feature…"} className="w-full rounded-xl border border-dashed border-white/20 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                <input type="number" min={0} value={newFeatV} onChange={(e) => setNewFeatV(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                <button onClick={() => { const k = newFeatK.trim(); if (!k || draft.pricing.features[k] !== undefined) return; patchDraft({ pricing: { ...draft.pricing, features: { ...draft.pricing.features, [k]: Number(newFeatV) || 0 } } }); setNewFeatK(""); }} className="rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950">+ {lang === "ar" ? "إضافة" : "Add"}</button>
               </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <h3 className="mb-4 font-bold">Design level multipliers</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <h3 className="mb-1 font-bold">Design level multipliers</h3>
+              <p className="mb-4 text-xs text-slate-500">Multiplier, e.g. 1.35</p>
+              <div className="space-y-2">
                 {Object.entries(draft.pricing.designLevels).map(([k, v]) => (
-                  <Field key={k} label={k} type="number" value={v} onChange={(nv) => patchDraft({ pricing: { ...draft.pricing, designLevels: { ...draft.pricing.designLevels, [k]: Number(nv) } } })} hint="Multiplier, e.g. 1.35" />
+                  <div key={k} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_40px]">
+                    <input value={k} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, designLevels: renameKey(draft.pricing.designLevels, k, e.target.value) } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                    <input type="number" min={0} step="0.05" value={v} onChange={(e) => patchDraft({ pricing: { ...draft.pricing, designLevels: { ...draft.pricing.designLevels, [k]: Number(e.target.value) } } })} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                    <button onClick={() => { const o = { ...draft.pricing.designLevels }; delete o[k]; patchDraft({ pricing: { ...draft.pricing, designLevels: o } }); }} className="rounded-xl border border-red-500/30 px-2 text-red-300 hover:bg-red-500/10" aria-label={`Delete ${k}`}>×</button>
+                  </div>
                 ))}
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+                <input value={newLevelK} onChange={(e) => setNewLevelK(e.target.value)} placeholder={lang === "ar" ? "مستوى جديد…" : "New level…"} className="w-full rounded-xl border border-dashed border-white/20 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" />
+                <input type="number" min={0} step="0.05" value={newLevelV} onChange={(e) => setNewLevelV(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300" dir="ltr" />
+                <button onClick={() => { const k = newLevelK.trim(); if (!k || draft.pricing.designLevels[k] !== undefined) return; patchDraft({ pricing: { ...draft.pricing, designLevels: { ...draft.pricing.designLevels, [k]: Number(newLevelV) || 1 } } }); setNewLevelK(""); }} className="rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-bold text-slate-950">+ {lang === "ar" ? "إضافة" : "Add"}</button>
               </div>
             </div>
             <SubmitBar />
@@ -333,12 +479,15 @@ export default function AdminDashboard({
         {tab === "forms" && (
           <section className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-2xl font-bold">{lang === "ar" ? "الرسائل والنماذج" : "Form Submissions"} <span className="ms-2 rounded-full bg-cyan-300 px-2.5 py-1 text-xs text-slate-950">{forms.length}</span></h2>
-              <div className="flex gap-2">
+              <h2 className="text-2xl font-bold">{lang === "ar" ? "الرسائل والنماذج" : "Form Submissions"} <span className="ms-2 rounded-full bg-cyan-300 px-2.5 py-1 text-xs text-slate-950">{filteredForms.length}/{forms.length}</span>
+                {unreadCount ? <span className="ms-2 rounded-full bg-amber-300 px-2.5 py-1 text-xs font-bold text-slate-950">{unreadCount} {lang === "ar" ? "غير مقروءة" : "unread"}</span> : null}
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => { markAllRead(); setForms(loadSubmissions()); flash(lang === "ar" ? "تم تعليم الكل كمقروء" : "All marked read"); }} className="rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/10">{lang === "ar" ? "تعليم الكل كمقروء" : "Mark all read"}</button>
                 <button
                   onClick={() => {
-                    if (!forms.length) return;
-                    const csv = exportCSV(forms);
+                    if (!filteredForms.length) return;
+                    const csv = exportCSV(filteredForms);
                     const blob = new Blob([csv], { type: "text/csv" });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
@@ -348,7 +497,7 @@ export default function AdminDashboard({
                   }}
                   className="rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/10"
                 >
-                  {lang === "ar" ? "تصدير CSV" : "Export CSV"}
+                  {lang === "ar" ? "تصدير CSV (المفلترة)" : "Export CSV (filtered)"}
                 </button>
                 <button
                   onClick={() => { if (confirm(lang==="ar" ? "مسح كل الرسائل؟" : "Clear all submissions?")) { clearSubmissions(); setForms([]); flash(lang==="ar" ? "تم المسح" : "Cleared"); } }}
@@ -358,15 +507,36 @@ export default function AdminDashboard({
                 </button>
               </div>
             </div>
-            {forms.length === 0 ? (
-              <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center text-slate-400">{lang==="ar" ? "لا توجد رسائل بعد. أي فورم يملأه العميل من صفحة About أو Contact هيظهر هنا." : "No submissions yet. Any form filled on About or Contact will appear here."}</p>
+            <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder={lang === "ar" ? "بحث بالاسم / الإيميل / الهاتف…" : "Search name / email / phone…"} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300 sm:col-span-2" />
+              <select value={fService} onChange={(e) => setFService(e.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300">
+                <option value="all">{lang === "ar" ? "كل الخدمات" : "All services"}</option>
+                {serviceNames.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <select value={fStatus} onChange={(e) => setFStatus(e.target.value as "all" | "unread" | "read")} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300">
+                  <option value="all">{lang === "ar" ? "الكل" : "All"}</option>
+                  <option value="unread">{lang === "ar" ? "غير مقروءة" : "Unread"}</option>
+                  <option value="read">{lang === "ar" ? "مقروءة" : "Read"}</option>
+                </select>
+                <select value={fSort} onChange={(e) => setFSort(e.target.value as "new" | "old")} className="w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300">
+                  <option value="new">{lang === "ar" ? "الأحدث" : "Newest"}</option>
+                  <option value="old">{lang === "ar" ? "الأقدم" : "Oldest"}</option>
+                </select>
+              </div>
+            </div>
+            {filteredForms.length === 0 ? (
+              <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-8 text-center text-slate-400">{forms.length === 0 ? (lang==="ar" ? "لا توجد رسائل بعد. أي فورم يملأه العميل من صفحة About أو Contact هيظهر هنا." : "No submissions yet. Any form filled on About or Contact will appear here.") : (lang === "ar" ? "لا توجد نتائج مطابقة للبحث." : "No matching results.")}</p>
             ) : (
               <div className="space-y-3">
-                {forms.map((f) => (
-                  <div key={f.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                {filteredForms.map((f) => (
+                  <div key={f.id} className={`rounded-2xl border p-4 ${f.read ? "border-white/10 bg-white/[0.04]" : "border-amber-300/30 bg-amber-300/[0.04]"}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-bold text-cyan-200">{f.id} <span className="ms-2 text-xs text-slate-400">{new Date(f.createdAt).toLocaleString(lang==="ar" ? "ar-EG" : "en-US")}</span></p>
-                      <button onClick={() => { deleteSubmission(f.id); setForms(loadSubmissions()); flash(lang==="ar" ? "تم الحذف" : "Deleted"); }} className="rounded-full border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10">{lang==="ar" ? "حذف" : "Delete"}</button>
+                      <p className="font-bold text-cyan-200">{!f.read ? <span className="me-2 inline-block h-2 w-2 rounded-full bg-amber-300" /> : null}{f.id} <span className="ms-2 text-xs font-normal text-slate-400">{new Date(f.createdAt).toLocaleString(lang==="ar" ? "ar-EG" : "en-US")}</span></p>
+                      <div className="flex gap-2">
+                        <button onClick={() => { setSubmissionRead(f.id, !f.read); setForms(loadSubmissions()); }} className="rounded-full border border-white/15 px-3 py-1 text-xs hover:bg-white/10">{f.read ? (lang === "ar" ? "تعليم غير مقروءة" : "Mark unread") : (lang === "ar" ? "تعليم مقروءة" : "Mark read")}</button>
+                        <button onClick={() => { deleteSubmission(f.id); setForms(loadSubmissions()); flash(lang==="ar" ? "تم الحذف" : "Deleted"); }} className="rounded-full border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10">{lang==="ar" ? "حذف" : "Delete"}</button>
+                      </div>
                     </div>
                     <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                       <p><span className="text-slate-400">Name:</span> <span className="text-white">{f.name}</span></p>
@@ -383,7 +553,7 @@ export default function AdminDashboard({
                       <p><span className="text-slate-400">References:</span> <span dir="ltr" className="text-slate-200">{f.references}</span></p>
                       <p><span className="text-slate-400">Features:</span> <span className="text-slate-200">{f.features}</span></p>
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       <a href={`mailto:${f.email}?subject=Re: ${f.id} - NEXORA`} className="rounded-full bg-cyan-300 px-4 py-1.5 text-xs font-bold text-slate-950">Reply via Email</a>
                       <a href={`https://wa.me/${f.phone.replace(/\D/g,"")}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-emerald-500/30 px-4 py-1.5 text-xs text-emerald-300">WhatsApp</a>
                     </div>
@@ -400,22 +570,42 @@ export default function AdminDashboard({
           <section className="space-y-5">
             <h2 className="text-2xl font-bold">{lang === "ar" ? "البيانات والنسخ الاحتياطي" : "Data & Backup"}</h2>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <h3 className="font-bold">{lang === "ar" ? "تصدير المحتوى" : "Export content"}</h3>
-              <p className="mt-2 text-sm text-slate-400">{lang === "ar" ? "نزّل نسخة JSON من كل محتوى الموقع." : "Download a JSON snapshot of all site content."}</p>
-              <button
-                onClick={() => {
-                  const blob = new Blob([exportContent(content)], { type: "application/json" });
-                  const a = document.createElement("a");
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `nexora-content-${new Date().toISOString().slice(0, 10)}.json`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
-                }}
-                className="mt-4 rounded-full bg-cyan-300 px-5 py-2.5 font-semibold text-slate-950"
-              >
-                {lang === "ar" ? "تنزيل JSON" : "Download JSON"}
-              </button>
+            <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.06] p-5">
+              <h3 className="font-bold text-cyan-200">{lang === "ar" ? "النشر لكل الزوار (مهم)" : "Publish for all visitors (important)"}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {lang === "ar"
+                  ? "زر الحفظ (Submit) يحفظ في متصفحك فقط للمعاينة. عشان التعديلات تظهر لكل الناس: ١) دوس تنزيل content.ts ٢) استبدل defaultContent في ملف src/content.ts ٣) اعمل commit + deploy."
+                  : "Submit saves to your browser only for preview. To publish for everyone: 1) Download content.ts 2) Replace defaultContent in src/content.ts 3) Commit + deploy."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    const blob = new Blob([exportContentTs(draft)], { type: "text/plain;charset=utf-8" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `content-publish-${new Date().toISOString().slice(0, 10)}.ts`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    flash(lang === "ar" ? "تم تنزيل ملف النشر" : "Publish file downloaded");
+                  }}
+                  className="rounded-full bg-cyan-300 px-5 py-2.5 text-sm font-bold text-slate-950 hover:scale-[1.02]"
+                >
+                  {lang === "ar" ? "تنزيل content.ts للنشر" : "Download content.ts to publish"}
+                </button>
+                <button
+                  onClick={() => {
+                    const blob = new Blob([exportContent(draft)], { type: "application/json" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `nexora-content-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  }}
+                  className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:bg-white/10"
+                >
+                  {lang === "ar" ? "تنزيل JSON (نسخة احتياطية)" : "Download JSON (backup)"}
+                </button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
@@ -429,7 +619,10 @@ export default function AdminDashboard({
                   const reader = new FileReader();
                   reader.onload = () => {
                     try {
-                      setContent({ ...defaultContent, ...JSON.parse(String(reader.result)) });
+                      const parsed = JSON.parse(String(reader.result));
+                      const merged = { ...defaultContent, ...parsed };
+                      setContent(merged);
+                      setDraft(merged);
                       flash(lang === "ar" ? "تم الاستيراد" : "Imported");
                     } catch {
                       flash(lang === "ar" ? "ملف غير صالح" : "Invalid file");
@@ -451,12 +644,6 @@ export default function AdminDashboard({
                 {lang === "ar" ? "إعادة تعيين كل المحتوى" : "Reset all content"}
               </button>
             </div>
-
-            <p className="rounded-xl bg-slate-900 p-4 text-xs text-slate-400">
-              {lang === "ar"
-                ? "ملاحظة: التعديلات محفوظة في متصفحك فقط (localStorage). لنشرها لكل الزوار، صدّر ملف JSON واستبدل القيم الافتراضية في src/content.ts، أو اربط اللوحة بواجهة برمجية على الخادم."
-                : "Note: edits are saved in this browser only (localStorage). To publish them for all visitors, export the JSON and replace the defaults in src/content.ts, or connect this panel to a backend API."}
-            </p>
           </section>
         )}
       </main>

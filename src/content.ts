@@ -18,6 +18,12 @@ export type ServiceItem = {
   price: Bi;
   accent: string;
   icon: string;
+  /** Show/hide on the public site without deleting. */
+  visible: boolean;
+  /** 3-5 short deliverables, one per line. Shown as checklist on cards + modal. */
+  highlights: Bi;
+  /** Optional small badge, e.g. "Most requested" / "الأكثر طلباً". Leave blank for none. */
+  badge?: Bi;
 };
 
 export type ProjectItem = {
@@ -94,14 +100,14 @@ export const defaultContent: SiteContent = {
   ],
 
   services: [
-    { id: "web", accent: "from-cyan-300 to-blue-500", icon: "</>", name: { en: "Website Development", ar: "تطوير المواقع" }, blurb: { en: "Custom websites engineered around each business model, brand and conversion path.", ar: "مواقع مخصصة مصممة حول نموذج عمل كل شركة وهويتها ومسار التحويل." }, price: { en: "Starting from EGP 5,000", ar: "تبدأ من ٥٬٠٠٠ ج.م" } },
-    { id: "ecom", accent: "from-fuchsia-300 to-violet-500", icon: "bag", name: { en: "E-commerce Development", ar: "تطوير المتاجر الإلكترونية" }, blurb: { en: "Online stores with product management, payments, orders, customers and operations.", ar: "متاجر إلكترونية بإدارة المنتجات والمدفوعات والطلبات والعملاء والعمليات." }, price: { en: "Starting from EGP 25,000", ar: "تبدأ من ٢٥٬٠٠٠ ج.م" } },
-    { id: "app", accent: "from-emerald-300 to-teal-500", icon: "app", name: { en: "Web Applications", ar: "تطبيقات الويب" }, blurb: { en: "Dashboards, booking systems, portals and complex business platforms built to scale.", ar: "لوحات تحكم وأنظمة حجز وبوابات ومنصات أعمال معقدة مبنية للتوسع." }, price: { en: "", ar: "" } },
-    { id: "ux", accent: "from-amber-200 to-orange-500", icon: "ux", name: { en: "UI/UX Design", ar: "تصميم واجهات وتجربة المستخدم" }, blurb: { en: "Premium interfaces shaped around usability, storytelling and measurable conversion.", ar: "واجهات احترافية مبنية على سهولة الاستخدام والتحويل القابل للقياس." }, price: { en: "Starting from EGP 8,000", ar: "تبدأ من ٨٬٠٠٠ ج.م" } },
-    { id: "soc", accent: "from-pink-300 to-rose-500", icon: "soc", name: { en: "Social Media Management", ar: "إدارة وسائل التواصل" }, blurb: { en: "Content strategy, production, posting, analytics and growth-focused account care.", ar: "استراتيجية محتوى وإنتاج ونشر وتحليلات وإدارة حسابات موجهة للنمو." }, price: { en: "From EGP 6,500/month", ar: "من ٦٬٥٠٠ ج.م شهرياً" } },
-    { id: "brand", accent: "from-indigo-300 to-sky-500", icon: "id", name: { en: "Branding", ar: "الهوية البصرية" }, blurb: { en: "Identity systems including logo, typography, color, motion and practical guidelines.", ar: "أنظمة هوية شاملة تضم الشعار والخطوط والألوان والحركة والإرشادات." }, price: { en: "", ar: "" } },
-    { id: "seo", accent: "from-lime-300 to-green-500", icon: "seo", name: { en: "SEO", ar: "تحسين محركات البحث" }, blurb: { en: "Technical and content optimization to improve search visibility and page quality.", ar: "تحسين تقني ومحتوى لرفع الظهور في البحث وجودة الصفحات." }, price: { en: "", ar: "" } },
-    { id: "ai", accent: "from-violet-300 to-cyan-400", icon: "ai", name: { en: "AI Solutions", ar: "حلول الذكاء الاصطناعي" }, blurb: { en: "AI chatbots, automation workflows, AI support and intelligent business tools.", ar: "روبوتات محادثة وأتمتة ودعم ذكي وأدوات أعمال متقدمة." }, price: { en: "", ar: "" } },
+    { id: "web", accent: "from-cyan-300 to-blue-500", icon: "code", visible: true, badge: { en: "Most requested", ar: "الأكثر طلباً" }, name: { en: "Website Development", ar: "تطوير المواقع" }, blurb: { en: "Custom websites engineered around each business model, brand and conversion path.", ar: "مواقع مخصصة مصممة حول نموذج عمل كل شركة وهويتها ومسار التحويل." }, price: { en: "Starting from EGP 5,000", ar: "تبدأ من ٥٬٠٠٠ ج.م" }, highlights: { en: "Conversion-focused UX\nMobile-first responsive build\nSEO-ready structure\nWhatsApp + contact integration", ar: "تجربة استخدام موجهة للتحويل\nتصميم متجاوب أولاً للجوال\nبنية جاهزة لمحركات البحث\nتكامل واتساب ونماذج التواصل" } },
+    { id: "ecom", accent: "from-fuchsia-300 to-violet-500", icon: "store", visible: true, badge: { en: "High ROI", ar: "عائد مرتفع" }, name: { en: "E-commerce Development", ar: "تطوير المتاجر الإلكترونية" }, blurb: { en: "Online stores with product management, payments, orders, customers and operations.", ar: "متاجر إلكترونية بإدارة المنتجات والمدفوعات والطلبات والعملاء والعمليات." }, price: { en: "Starting from EGP 25,000", ar: "تبدأ من ٢٥٬٠٠٠ ج.م" }, highlights: { en: "Product variants + inventory\nPaymob + Vodafone Cash\nOrder + customer management\nArabic / English storefront", ar: "منتجات متعددة + مخزون\nPaymob + فودافون كاش\nإدارة الطلبات والعملاء\nمتجر عربي / إنجليزي" } },
+    { id: "app", accent: "from-emerald-300 to-teal-500", icon: "app", visible: true, badge: { en: "", ar: "" }, name: { en: "Web Applications", ar: "تطبيقات الويب" }, blurb: { en: "Dashboards, booking systems, portals and complex business platforms built to scale.", ar: "لوحات تحكم وأنظمة حجز وبوابات ومنصات أعمال معقدة مبنية للتوسع." }, price: { en: "Starting from EGP 30,000", ar: "تبدأ من ٣٠٬٠٠٠ ج.م" }, highlights: { en: "Admin dashboards + roles\nBooking / portal workflows\nSecure API + database design\nScalable cloud-ready build", ar: "لوحات تحكم + صلاحيات\nأنظمة حجز وبوابات\nتصميم API وقاعدة بيانات آمنة\nبنية سحابية قابلة للتوسع" } },
+    { id: "ux", accent: "from-amber-200 to-orange-500", icon: "pen", visible: true, badge: { en: "", ar: "" }, name: { en: "UI/UX Design", ar: "تصميم واجهات وتجربة المستخدم" }, blurb: { en: "Premium interfaces shaped around usability, storytelling and measurable conversion.", ar: "واجهات احترافية مبنية على سهولة الاستخدام والتحويل القابل للقياس." }, price: { en: "Starting from EGP 8,000", ar: "تبدأ من ٨٬٠٠٠ ج.م" }, highlights: { en: "UX research + wireframes\nPremium UI system\nInteractive prototype\nDeveloper-ready handoff", ar: "أبحاث UX + هياكل أولية\nنظام واجهات احترافي\nنموذج تفاعلي\nتسليم جاهز للمطورين" } },
+    { id: "soc", accent: "from-pink-300 to-rose-500", icon: "mega", visible: true, badge: { en: "", ar: "" }, name: { en: "Social Media Management", ar: "إدارة وسائل التواصل" }, blurb: { en: "Content strategy, production, posting, analytics and growth-focused account care.", ar: "استراتيجية محتوى وإنتاج ونشر وتحليلات وإدارة حسابات موجهة للنمو." }, price: { en: "From EGP 6,500/month", ar: "من ٦٬٥٠٠ ج.م شهرياً" }, highlights: { en: "Monthly content calendar\nDesign + reels production\nPosting + community care\nGrowth + performance reports", ar: "خطة محتوى شهرية\nتصميم وإنتاج ريلز\nنشر وإدارة المجتمع\nتقارير نمو وأداء" } },
+    { id: "brand", accent: "from-indigo-300 to-sky-500", icon: "palette", visible: true, badge: { en: "", ar: "" }, name: { en: "Branding", ar: "الهوية البصرية" }, blurb: { en: "Identity systems including logo, typography, color, motion and practical guidelines.", ar: "أنظمة هوية شاملة تضم الشعار والخطوط والألوان والحركة والإرشادات." }, price: { en: "Starting from EGP 12,000", ar: "تبدأ من ١٢٬٠٠٠ ج.م" }, highlights: { en: "Logo + visual identity\nTypography + color system\nSocial kit + templates\nBrand guidelines PDF", ar: "شعار + هوية بصرية\nمنظومة خطوط وألوان\nحزمة سوشيال وقوالب\nدليل استخدام PDF" } },
+    { id: "seo", accent: "from-lime-300 to-green-500", icon: "chart", visible: true, badge: { en: "", ar: "" }, name: { en: "SEO", ar: "تحسين محركات البحث" }, blurb: { en: "Technical and content optimization to improve search visibility and page quality.", ar: "تحسين تقني ومحتوى لرفع الظهور في البحث وجودة الصفحات." }, price: { en: "From EGP 4,000/month", ar: "من ٤٬٠٠٠ ج.م شهرياً" }, highlights: { en: "Technical SEO audit\nKeyword + content plan\nOn-page optimization\nMonthly ranking reports", ar: "تدقيق SEO تقني\nخطة كلمات ومحتوى\nتحسين الصفحات داخلياً\nتقارير ترتيب شهرية" } },
+    { id: "ai", accent: "from-violet-300 to-cyan-400", icon: "bot", visible: true, badge: { en: "New", ar: "جديد" }, name: { en: "AI Solutions", ar: "حلول الذكاء الاصطناعي" }, blurb: { en: "AI chatbots, automation workflows, AI support and intelligent business tools.", ar: "روبوتات محادثة وأتمتة ودعم ذكي وأدوات أعمال متقدمة." }, price: { en: "Starting from EGP 15,000", ar: "تبدأ من ١٥٬٠٠٠ ج.م" }, highlights: { en: "AI chatbot for sales + support\nWorkflow automation\nSmart lead qualification\nHuman handoff to WhatsApp", ar: "روبوت مبيعات ودعم ذكي\nأتمتة سير العمل\nتأهيل ذكي للعملاء\nتحويل بشري لواتساب" } },
   ],
 
   projects: [
@@ -210,13 +216,53 @@ export const defaultContent: SiteContent = {
 
 const STORAGE_KEY = "nexora_site_content";
 
+function isObj(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Recursive merge: saved overrides win, but new default fields always survive updates. */
+function deepMerge<T>(base: T, over: unknown): T {
+  if (Array.isArray(base)) return (Array.isArray(over) ? over : base) as unknown as T;
+  if (isObj(base) && isObj(over)) {
+    const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+    for (const k of Object.keys(over)) {
+      out[k] = k in out ? deepMerge((out as Record<string, unknown>)[k] as unknown, (over as Record<string, unknown>)[k]) : (over as Record<string, unknown>)[k];
+    }
+    return out as unknown as T;
+  }
+  return (over === undefined ? base : over) as T;
+}
+
+function migrateServices(list: ServiceItem[]): ServiceItem[] {
+  const defaults = new Map(defaultContent.services.map((s) => [s.id, s]));
+  const biPick = (a?: Bi, b?: Bi): Bi => ({ en: a?.en ?? b?.en ?? "", ar: a?.ar ?? b?.ar ?? "" });
+  return list.map((s) => {
+    const d = defaults.get(s.id);
+    const { highlights: sh, badge: sb, name: sn, blurb: sbl, price: sp, visible: sv, accent: sa, icon: si, ...rest } = s as ServiceItem;
+    return {
+      ...rest,
+      id: s.id,
+      visible: sv ?? d?.visible ?? true,
+      accent: sa ?? d?.accent ?? "from-cyan-300 to-blue-500",
+      icon: si ?? d?.icon ?? "code",
+      name: biPick(sn, d?.name),
+      blurb: biPick(sbl, d?.blurb),
+      price: biPick(sp, d?.price),
+      highlights: biPick(sh, d?.highlights),
+      badge: biPick(sb, d?.badge),
+    };
+  });
+}
+
 /** Deep-merge saved overrides onto defaults so new fields keep working after updates. */
 export function loadContent(): SiteContent {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultContent;
     const saved = JSON.parse(raw);
-    return { ...defaultContent, ...saved };
+    const merged = deepMerge(defaultContent, saved);
+    merged.services = migrateServices(merged.services ?? []);
+    return merged;
   } catch {
     return defaultContent;
   }
@@ -241,4 +287,28 @@ export function resetContent() {
 
 export function exportContent(content: SiteContent) {
   return JSON.stringify(content, null, 2);
+}
+
+/**
+ * Generate a ready-to-commit `src/content.ts` defaults block from the
+ * current dashboard content, so edits can be published for ALL visitors.
+ * Usage: download from Admin → Data tab, replace the `defaultContent`
+ * object in this file, commit + deploy.
+ */
+export function exportContentTs(content: SiteContent): string {
+  const str = (v: string) => JSON.stringify(v);
+  const biTs = (b: Bi) => `{ en: ${str(b.en)}, ar: ${str(b.ar)} }`;
+  const services = content.services
+    .map(
+      (s) =>
+        `    { id: ${str(s.id)}, accent: ${str(s.accent)}, icon: ${str(s.icon)}, visible: ${s.visible ? "true" : "false"}, badge: ${biTs(s.badge ?? { en: "", ar: "" })}, name: ${biTs(s.name)}, blurb: ${biTs(s.blurb)}, price: ${biTs(s.price)}, highlights: ${biTs(s.highlights)} },`
+    )
+    .join("\n");
+  return `// Generated from NEXORA CMS → Data & Backup → "Download content.ts"
+// Paste this object over \`defaultContent\` in src/content.ts, then commit + deploy.
+export const defaultContentGenerated = ${JSON.stringify(content, null, 2)};
+
+// --- services block (copy-paste friendly) ---
+// ${services}
+`;
 }
