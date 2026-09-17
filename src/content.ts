@@ -75,6 +75,7 @@ export type SiteContent = {
   };
 };
 
+// NEXORA-CONTENT-START — managed by CMS "Publish online". Do not edit between markers by hand.
 export const defaultContent: SiteContent = {
   hero: {
     title: {
@@ -218,6 +219,7 @@ export const defaultContent: SiteContent = {
     maxQuote: 30000,
   },
 };
+// NEXORA-CONTENT-END
 
 const STORAGE_KEY = "nexora_site_content";
 const PRICING_VERSION_KEY = "nexora_pricing_version";

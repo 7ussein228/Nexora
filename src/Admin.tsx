@@ -3,6 +3,7 @@ import type { Bi, ProjectItem, ServiceItem, SiteContent, StatItem, TierItem } fr
 import { defaultContent, exportContent, exportContentTs, resetContent } from "./content";
 import type { Dict, Lang } from "./i18n";
 import { loadSubmissions, deleteSubmission, clearSubmissions, exportCSV, setSubmissionRead, markAllRead, type FormSubmission } from "./forms";
+import { compressImage, isDataUrlImage, loadGhSettings, saveGhSettings, clearGhToken, getLastPublish, publishSiteContent, type GhSettings } from "./publish";
 
 type Tab = "overview" | "hero" | "stats" | "services" | "projects" | "tiers" | "pricing" | "contact" | "forms" | "data";
 
@@ -111,6 +112,44 @@ function Stat({ label, value, sub, hot }: { label: string; value: string; sub?: 
   );
 }
 
+function ImageField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setErr("");
+    if (!file.type.startsWith("image/")) { setErr("Please choose an image file."); return; }
+    if (file.size > 8 * 1024 * 1024) { setErr("Max 8MB per photo."); return; }
+    setBusy(true);
+    try {
+      onChange(await compressImage(file));
+    } catch {
+      setErr("Could not read this image.");
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="space-y-3">
+      <span className="block text-sm text-slate-300">Project photo</span>
+      {value ? (
+        <div className="relative overflow-hidden rounded-xl border border-white/10">
+          <img src={value} alt="" className="h-40 w-full object-cover" loading="lazy" />
+          {isDataUrlImage(value) ? (
+            <span className="absolute start-2 top-2 rounded-full bg-cyan-300 px-2.5 py-1 text-[0.7rem] font-bold text-slate-950">Uploaded — publishes with content</span>
+          ) : null}
+          <button onClick={() => onChange("")} className="absolute end-2 top-2 rounded-full border border-red-500/40 bg-slate-950/80 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20">Remove</button>
+        </div>
+      ) : null}
+      <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-slate-950 px-3 py-3 text-sm text-slate-300 transition hover:border-cyan-300/60 hover:text-white ${busy ? "pointer-events-none opacity-50" : ""}`}>
+        <input type="file" accept="image/*" className="hidden" onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+        {busy ? "Compressing…" : value ? "Replace photo (upload)" : "Upload photo"}
+      </label>
+      <Field label="…or paste image URL" value={isDataUrlImage(value) ? "" : value} onChange={onChange} hint="Upload preferred — URL images stay as links" />
+      {err ? <p role="alert" className="text-xs text-red-400">{err}</p> : null}
+    </div>
+  );
+}
+
 function Card({ title, children, onDelete }: { title: string; children: React.ReactNode; onDelete?: () => void }) {
   const [open, setOpen] = useState(false);
   return (
@@ -155,6 +194,11 @@ export default function AdminDashboard({
   const [newFeatV, setNewFeatV] = useState("5000");
   const [newLevelK, setNewLevelK] = useState("");
   const [newLevelV, setNewLevelV] = useState("1.5");
+  // online publish (GitHub → all devices)
+  const [gh, setGh] = useState<GhSettings>(() => loadGhSettings());
+  const [pubState, setPubState] = useState<"idle" | "working" | "done" | "error">("idle");
+  const [pubMsg, setPubMsg] = useState("");
+  const [lastPub, setLastPub] = useState(() => getLastPublish());
   useEffect(() => setDraft(content), [content]);
   useEffect(() => {
     const onUpdate = () => setForms(loadSubmissions());
@@ -482,8 +526,7 @@ export default function AdminDashboard({
                   <Field label="Project name" value={p.name} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { name: v }) })} />
                   <Field label="Live URL" value={p.url} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { url: v }) })} hint="Shows a 'Visit site' button when filled" />
                 </div>
-                <Field label="Preview image URL" value={p.image} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { image: v }) })} />
-                {p.image ? <img src={p.image} alt="" className="h-32 w-full rounded-xl object-cover" loading="lazy" /> : null}
+                <ImageField value={p.image} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { image: v }) })} />
                 <BiField label="Client" value={p.client} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { client: v }) })} />
                 <BiField label="Industry" value={p.industry} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { industry: v }) })} />
                 <BiField label="Services provided" value={p.services} onChange={(v) => patchDraft({ projects: updateList(draft.projects, p.id, { services: v }) })} />
@@ -730,6 +773,85 @@ export default function AdminDashboard({
         {tab === "data" && (
           <section className="space-y-5">
             <h2 className="text-2xl font-bold">{lang === "ar" ? "البيانات والنسخ الاحتياطي" : "Data & Backup"}</h2>
+
+            <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.05] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-bold text-emerald-200">{lang === "ar" ? "النشر أونلاين (كل الأجهزة)" : "Publish online (all devices)"}</h3>
+                {lastPub ? <span className="rounded-full bg-white/10 px-3 py-1 text-[0.7rem] text-slate-300" dir="ltr">last: {lastPub}</span> : null}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {lang === "ar"
+                  ? "بينشر تعديلاتك المحفوظة على GitHub، والموقع يتحدث تلقائياً على كل الأجهزة خلال دقيقة أو دقيقتين (Vercel + GitHub Pages). الصور المرفوعة تترفع مع النشر."
+                  : "Pushes your saved edits to GitHub — the site rebuilds on all devices in a minute or two (Vercel + GitHub Pages). Uploaded photos go up with it."}
+              </p>
+              {isDirty ? (
+                <p className="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-3 text-sm text-amber-200">
+                  {lang === "ar" ? "عندك تعديلات غير محفوظة — دوس حفظ (Submit) من أي تبويب الأول." : "You have unsaved changes — hit Submit in any tab first."}
+                </p>
+              ) : null}
+              <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                <label className="block text-sm">
+                  <span className="text-slate-300">{lang === "ar" ? "GitHub Token (يُحفظ في متصفحك فقط)" : "GitHub Token (stored in this browser only)"}</span>
+                  <input type="password" value={gh.token} onChange={(e) => setGh({ ...gh, token: e.target.value.trim() })} placeholder="ghp_…" dir="ltr" className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-cyan-300" />
+                </label>
+                <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
+                  <label className="block text-sm">
+                    <span className="text-slate-300">Repo</span>
+                    <input value={gh.repo} onChange={(e) => setGh({ ...gh, repo: e.target.value.trim() })} placeholder="owner/name" dir="ltr" className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-cyan-300" />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-slate-300">Branch</span>
+                    <input value={gh.branch} onChange={(e) => setGh({ ...gh, branch: e.target.value.trim() || "main" })} dir="ltr" className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none transition focus:border-cyan-300" />
+                  </label>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => { saveGhSettings(gh); flash(lang === "ar" ? "تم حفظ الإعدادات" : "Settings saved"); }}
+                  className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:bg-white/10"
+                >
+                  {lang === "ar" ? "حفظ الإعدادات" : "Save settings"}
+                </button>
+                {gh.token ? (
+                  <button
+                    onClick={() => { clearGhToken(); setGh({ ...gh, token: "" }); flash(lang === "ar" ? "تم مسح التوكن" : "Token removed"); }}
+                    className="rounded-full border border-red-500/30 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10"
+                  >
+                    {lang === "ar" ? "مسح التوكن" : "Remove token"}
+                  </button>
+                ) : null}
+                <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=NEXORA%20CMS%20publish" target="_blank" rel="noopener noreferrer" className="text-sm text-cyan-300 underline underline-offset-4">
+                  {lang === "ar" ? "إنشاء توكن (صلاحية public_repo)" : "Create a token (public_repo scope)"}
+                </a>
+              </div>
+              <button
+                disabled={pubState === "working" || isDirty || !gh.token}
+                onClick={() => {
+                  setPubState("working");
+                  setPubMsg(lang === "ar" ? "جارٍ النشر…" : "Publishing…");
+                  void publishSiteContent(content, gh, (m) => setPubMsg(m))
+                    .then(({ commitSha, uploadedImages }) => {
+                      setPubState("done");
+                      setLastPub(getLastPublish());
+                      const msg = lang === "ar"
+                        ? `تم النشر (${commitSha.slice(0, 7)}${uploadedImages ? ` + ${uploadedImages} صور` : ""}) — الموقع يتحدث خلال دقيقتين`
+                        : `Published (${commitSha.slice(0, 7)}${uploadedImages ? ` + ${uploadedImages} photo(s)` : ""}) — live in ~2 min`;
+                      setPubMsg(msg);
+                      flash(msg);
+                    })
+                    .catch((e: unknown) => {
+                      setPubState("error");
+                      setPubMsg(e instanceof Error ? e.message : "Publish failed");
+                    });
+                }}
+                className="mt-4 w-full rounded-full bg-emerald-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:px-8"
+              >
+                {pubState === "working" ? (lang === "ar" ? "جارٍ النشر…" : "Publishing…") : (lang === "ar" ? "نشر أونلاين الآن" : "Publish online now")}
+              </button>
+              {pubMsg ? (
+                <p className={`mt-3 rounded-xl p-3 text-sm ${pubState === "error" ? "border border-red-500/30 bg-red-500/10 text-red-300" : "bg-slate-900 text-slate-300"}`} dir="ltr">{pubMsg}</p>
+              ) : null}
+            </div>
 
             <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.06] p-5">
               <h3 className="font-bold text-cyan-200">{lang === "ar" ? "النشر لكل الزوار (مهم)" : "Publish for all visitors (important)"}</h3>
