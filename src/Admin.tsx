@@ -543,7 +543,7 @@ export default function AdminDashboard({
 
             <div className="rounded-2xl border border-amber-300/30 bg-amber-300/[0.05] p-5">
               <h3 className="mb-1 font-bold">{lang === "ar" ? "سقف التقدير (الحد الأقصى)" : "Estimate cap"}</h3>
-              <p className="mb-4 text-xs leading-5 text-slate-400">{lang === "ar" ? "مهما كانت الاختيارات، التقدير الظاهر للزائر لن يتجاوز هذا الرقم. الحالي: ٣٠٬٠٠٠ ج." : "No matter the selections, the visitor-facing estimate never exceeds this. Currently 30,000 EGP."}</p>
+              <p className="mb-4 text-xs leading-5 text-slate-400">{lang === "ar" ? `مهما كانت الاختيارات، أي تقدير فوق ${draft.pricing.maxQuote.toLocaleString("en-EG")} ج يظهر للزائر "سعر خاص" مع زرار الفيسبوك.` : `Any estimate above ${draft.pricing.maxQuote.toLocaleString("en-EG")} EGP shows as "Private Price" with a Facebook button.`}</p>
               <div className="max-w-xs">
                 <Field label={lang === "ar" ? "الحد الأقصى (جنيه)" : "Max quote (EGP)"} type="number" value={draft.pricing.maxQuote ?? 30000} onChange={(v) => patchDraft({ pricing: { ...draft.pricing, maxQuote: Math.max(1000, Number(v) || 30000) } })} />
               </div>
@@ -625,10 +625,11 @@ export default function AdminDashboard({
               </div>
               <BiField label="Business hours" value={draft.contact.hours} onChange={(v) => patchDraft({ contact: { ...draft.contact, hours: v } })} />
               <BiField label="Location" value={draft.contact.location} onChange={(v) => patchDraft({ contact: { ...draft.contact, location: v } })} />
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="LinkedIn" value={draft.contact.linkedin} onChange={(v) => patchDraft({ contact: { ...draft.contact, linkedin: v } })} />
                 <Field label="Instagram" value={draft.contact.instagram} onChange={(v) => patchDraft({ contact: { ...draft.contact, instagram: v } })} />
                 <Field label="Behance" value={draft.contact.behance} onChange={(v) => patchDraft({ contact: { ...draft.contact, behance: v } })} />
+                <Field label="Facebook" value={draft.contact.facebook} onChange={(v) => patchDraft({ contact: { ...draft.contact, facebook: v } })} />
               </div>
             </div>
             <SubmitBar />

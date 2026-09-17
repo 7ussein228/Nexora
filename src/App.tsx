@@ -1,6 +1,6 @@
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, memo, useRef, useState, type ReactElement } from "react";
 import { dict, fmtMoney, fmtNum, type Dict, type Lang } from "./i18n";
-import { loadContent, saveContent, type Bi, type ProjectItem, type ServiceItem, type SiteContent } from "./content";
+import { loadContent, saveContent, FACEBOOK_URL, type Bi, type ProjectItem, type ServiceItem, type SiteContent, type TierItem } from "./content";
 import { saveSubmission } from "./forms";
 
 const AdminDashboard = lazy(() => import("./Admin"));
@@ -100,6 +100,18 @@ function ServiceBadge({ accent, icon }: { accent: string; icon: string }) {
   );
 }
 
+/** Tier prices like "Custom"/"Private"/"خاص" mean: talk to us instead of a fixed number. */
+function isCustomPrice(tier: TierItem): boolean {
+  return /custom|private|خاص|مخصص/i.test(`${tier.price.en} ${tier.price.ar}`);
+}
+
+function FacebookIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.9h2.54V9.85c0-2.52 1.5-3.9 3.77-3.9 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.88h2.78l-.45 2.9h-2.33V22c4.78-.76 8.44-4.92 8.44-9.94Z" />
+    </svg>
+  );
+}
 /** Split bilingual highlights textarea into clean bullet lines. */
 function highlightLines(v: Bi, lang: Lang): string[] {
   const raw = bi(v, lang);
@@ -200,19 +212,30 @@ function QuoteBuilder({ content, t, lang }: { content: SiteContent; t: Dict; lan
       </div>
       <aside className="h-fit rounded-3xl border border-cyan-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-cyan-950/40 backdrop-blur-2xl sm:rounded-[2rem] sm:p-6 md:p-8 lg:sticky lg:top-28">
         <p className="text-xs uppercase tracking-[0.24em] text-cyan-200 sm:text-sm">{t.builder.estimate}</p>
-        <p className="mt-4 text-[clamp(1.75rem,6vw,3rem)] font-black leading-none tracking-tight text-white sm:mt-5">{fmtMoney(total, lang)}</p>
         {capped ? (
-          <p className="mt-3 w-fit rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-200">
-            {lang === "ar" ? `الحد الأقصى ${fmtMoney(cap, lang)}` : `Capped at ${fmtMoney(cap, lang)}`}
-          </p>
+          <>
+            <p className="mt-4 text-[clamp(1.75rem,6vw,3rem)] font-black leading-none tracking-tight text-white sm:mt-5">{lang === "ar" ? "سعر خاص" : "Private Price"}</p>
+            <p className="mt-4 text-sm leading-6 text-slate-300">
+              {lang === "ar"
+                ? "مشروعك أكبر من الباقات القياسية (٥٬٠٠٠ – ٣٠٬٠٠٠ ج) — تواصل معنا مباشرة لسعر خاص."
+                : "Your project exceeds standard packages (EGP 5,000 – 30,000) — contact us directly for a private price."}
+            </p>
+            <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="magnetic mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1877F2] px-6 py-4 font-bold text-white transition hover:brightness-110">
+              <FacebookIcon />{lang === "ar" ? "تواصل معنا على فيسبوك" : "Contact us on Facebook"}
+            </a>
+            <a href="#contact" className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-4 font-semibold text-white transition hover:bg-white/10">{t.cta.request}</a>
+          </>
         ) : (
-          <p className="mt-3 text-xs text-slate-500">{lang === "ar" ? `الحد الأقصى ${fmtMoney(cap, lang)}` : `Max ${fmtMoney(cap, lang)}`}</p>
+          <>
+            <p className="mt-4 text-[clamp(1.75rem,6vw,3rem)] font-black leading-none tracking-tight text-white sm:mt-5">{fmtMoney(total, lang)}</p>
+            <p className="mt-3 text-xs text-slate-500">{lang === "ar" ? `الحد الأقصى ${fmtMoney(cap, lang)}` : `Max ${fmtMoney(cap, lang)}`}</p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={t.builder.estimate}>
+              <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-300">{t.builder.note}</p>
+            <a href="#contact" className="magnetic mt-8 inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-4 font-semibold text-slate-950 transition hover:bg-cyan-200">{t.cta.request}</a>
+          </>
         )}
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={t.builder.estimate}>
-          <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300 transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="mt-4 text-sm leading-6 text-slate-300">{t.builder.note}</p>
-        <a href="#contact" className="magnetic mt-8 inline-flex w-full items-center justify-center rounded-full bg-white px-6 py-4 font-semibold text-slate-950 transition hover:bg-cyan-200">{t.cta.request}</a>
       </aside>
     </div>
   );
@@ -258,7 +281,11 @@ function ContactForm({ onSubmit, t }: { onSubmit: (id: string) => void; t: Dict 
   );
 }
 
-function CustomerPortal({ t }: { t: Dict }) {
+function CustomerPortal({ t, email, onPay }: { t: Dict; email: string; onPay: () => void }) {
+  const [ticket, setTicket] = useState("");
+  const [msg, setMsg] = useState("");
+  const mailTo = (subject: string, body: string) =>
+    `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return (
     <main className="safe-x min-h-screen bg-slate-950 px-4 pb-16 pt-24 text-white sm:pt-28 md:px-8">
       <div className="shell">
@@ -270,10 +297,18 @@ function CustomerPortal({ t }: { t: Dict }) {
             <ol className="mt-6 space-y-3">{t.portal.statuses.map((s, i) => <li key={s} className="flex items-center gap-3"><span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${i <= 3 ? "bg-cyan-300" : "bg-white/20"}`} /><span className={i <= 3 ? "text-white" : "text-slate-500"}>{s}</span></li>)}</ol>
           </aside>
           <section className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6"><h3 className="font-bold">{t.portal.invoices}</h3><p className="mt-2 text-slate-300">{t.portal.invoiceVal}</p><button className="mt-5 w-full rounded-full bg-cyan-200 px-5 py-3 font-bold text-slate-950 sm:w-auto">{t.portal.pay}</button></div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6"><h3 className="font-bold">{t.portal.invoices}</h3><p className="mt-2 text-slate-300">{t.portal.invoiceVal}</p><button onClick={onPay} className="mt-5 w-full rounded-full bg-cyan-200 px-5 py-3 font-bold text-slate-950 sm:w-auto">{t.portal.pay}</button></div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6"><h3 className="font-bold">{t.portal.milestones}</h3><p className="mt-2 text-slate-300">{t.portal.milestoneVal}</p></div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6"><h3 className="font-bold">{t.portal.messages}</h3><textarea aria-label={t.portal.messages} className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 p-3" placeholder={t.portal.msgPlaceholder} /></div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6"><h3 className="font-bold">{t.portal.ticket}</h3><input aria-label={t.portal.subject} className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 p-3" placeholder={t.portal.subject} /><button className="mt-3 w-full rounded-full border border-white/20 px-5 py-3 sm:w-auto">{t.portal.createTicket}</button></div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6">
+              <h3 className="font-bold">{t.portal.messages}</h3>
+              <textarea aria-label={t.portal.messages} value={msg} onChange={(e) => setMsg(e.target.value)} className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 p-3" placeholder={t.portal.msgPlaceholder} />
+              <a href={mailTo("Project message", msg)} className="mt-3 inline-block w-full rounded-full bg-white px-5 py-3 text-center font-bold text-slate-950 sm:w-auto">{t.portal.messages}</a>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 sm:rounded-3xl sm:p-6">
+              <h3 className="font-bold">{t.portal.ticket}</h3>
+              <input aria-label={t.portal.subject} value={ticket} onChange={(e) => setTicket(e.target.value)} className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 p-3" placeholder={t.portal.subject} />
+              <a href={mailTo(`Support ticket: ${ticket || t.portal.subject}`, "")} className="mt-3 inline-block w-full rounded-full border border-white/20 px-5 py-3 text-center sm:w-auto">{t.portal.createTicket}</a>
+            </div>
           </section>
         </div>
       </div>
@@ -570,7 +605,7 @@ export default function App() {
   if (authView === "admin" && user) return <Suspense fallback={<SectionLoader />}><AdminDashboard content={content} setContent={setContent} onLogout={logout} onExit={() => setAuthView("none")} t={t} lang={lang} /></Suspense>;
 
   const chrome = <TopNav items={items} menu={menu} setMenu={setMenu} go={go} user={user} onLogout={logout} t={t} lang={lang} setLang={setLang} />;
-  if (view === "portal") return <>{chrome}<CustomerPortal t={t} /></>;
+  if (view === "portal") return <>{chrome}<CustomerPortal t={t} email={content.contact.email} onPay={() => setView("pending")} /></>;
   if (view !== "home") return <>{chrome}<PaymentStatus status={view} t={t} /></>;
 
   const shown = content.projects.filter((p) => p.featured);
@@ -696,7 +731,13 @@ export default function App() {
                   <p className="text-xs font-bold tracking-[0.25em] text-cyan-200 sm:text-sm" dir="ltr">{tier.name}</p>
                   <h3 className="mt-5 text-[clamp(1.4rem,4.5vw,2rem)] font-black sm:mt-6">{bi(tier.price, lang)}</h3>
                   <p className="mt-4 flex-1 text-slate-300">{bi(tier.desc, lang)}</p>
-                  <a href="#contact" className="mt-6 inline-flex justify-center rounded-full border border-white/20 px-5 py-3 font-bold transition hover:bg-white hover:text-slate-950 sm:mt-7">{t.cta.quote}</a>
+                  {isCustomPrice(tier) ? (
+                    <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#1877F2] px-5 py-3 font-bold text-white transition hover:brightness-110 sm:mt-7">
+                      <FacebookIcon />{lang === "ar" ? "تواصل معنا" : "Contact us"}
+                    </a>
+                  ) : (
+                    <a href="#contact" className="mt-6 inline-flex justify-center rounded-full border border-white/20 px-5 py-3 font-bold transition hover:bg-white hover:text-slate-950 sm:mt-7">{t.cta.quote}</a>
+                  )}
                 </div>
               ))}
             </div>
@@ -744,10 +785,17 @@ export default function App() {
             <SectionTitle label={t.social.label} title={t.social.title} copy={t.social.copy} />
             <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
               {["BASIC", "GROWTH", "PREMIUM", "CUSTOM"].map((pkg, i) => (
-                <div key={pkg} className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 sm:rounded-[2rem] sm:p-7">
+                <div key={pkg} className="flex flex-col rounded-3xl border border-white/10 bg-white/[0.05] p-6 sm:rounded-[2rem] sm:p-7">
                   <h3 className="text-xl font-black sm:text-2xl" dir="ltr">{pkg}</h3>
                   <p className="mt-3 text-cyan-200">{i === 3 ? t.social.customPrice : `${t.social.from} ${fmtMoney((i + 1) * 6500, lang)}${t.social.perMonth}`}</p>
-                  <p className="mt-4 text-slate-300">{fmtNum(i + 1, lang)} {t.social.deliver}</p>
+                  <p className="mt-4 flex-1 text-slate-300">{fmtNum(i + 1, lang)} {t.social.deliver}</p>
+                  {i === 3 ? (
+                    <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#1877F2] px-5 py-3 text-sm font-bold text-white transition hover:brightness-110">
+                      <FacebookIcon />{lang === "ar" ? "تواصل معنا" : "Contact us"}
+                    </a>
+                  ) : (
+                    <a href="#contact" className="mt-6 inline-flex justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-bold transition hover:bg-white hover:text-slate-950">{t.cta.quote}</a>
+                  )}
                 </div>
               ))}
             </div>
@@ -798,6 +846,7 @@ export default function App() {
                 <p>{t.contact.whatsapp}: <a className="underline decoration-cyan-300/40 underline-offset-4" href={`tel:${content.contact.phone.replace(/\s/g, "")}`} dir="ltr">{content.contact.phone}</a></p>
                 <p>{t.contact.hours}: {bi(content.contact.hours, lang)}</p>
                 <p>{t.contact.location}: {bi(content.contact.location, lang)}</p>
+                <p>{lang === "ar" ? "فيسبوك" : "Facebook"}: <a className="underline decoration-cyan-300/40 underline-offset-4" href={content.contact.facebook} target="_blank" rel="noopener noreferrer" dir="ltr">{content.contact.facebook.replace("https://www.", "")}</a></p>
               </div>
             </div>
             <ContactForm t={t} onSubmit={(id) => setToast(t.contact.received(id))} />
@@ -822,7 +871,7 @@ export default function App() {
             <div>
               <h3 className="font-bold text-white">{t.footer.cols.services}</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-400">
-                {visibleServices.slice(0, 4).map((s) => <p key={s.id}>{bi(s.name, lang)}</p>)}
+                {visibleServices.slice(0, 4).map((s) => <button key={s.id} onClick={() => go("services")} className="block text-start hover:text-white">{bi(s.name, lang)}</button>)}
               </div>
             </div>
             <div>
@@ -831,6 +880,7 @@ export default function App() {
                 <a href={content.contact.linkedin} target="_blank" rel="noopener noreferrer" className="block hover:text-white">LinkedIn</a>
                 <a href={content.contact.instagram} target="_blank" rel="noopener noreferrer" className="block hover:text-white">Instagram</a>
                 <a href={content.contact.behance} target="_blank" rel="noopener noreferrer" className="block hover:text-white">Behance</a>
+                <a href={content.contact.facebook} target="_blank" rel="noopener noreferrer" className="block hover:text-white">Facebook</a>
               </div>
             </div>
           </div>

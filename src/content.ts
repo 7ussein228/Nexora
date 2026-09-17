@@ -63,6 +63,7 @@ export type SiteContent = {
     linkedin: string;
     instagram: string;
     behance: string;
+    facebook: string;
   };
   pricing: {
     websiteTypes: Record<string, number>;
@@ -108,7 +109,7 @@ export const defaultContent: SiteContent = {
     { id: "ux", accent: "from-amber-200 to-orange-500", icon: "pen", visible: true, badge: { en: "", ar: "" }, name: { en: "UI/UX Design", ar: "تصميم واجهات وتجربة المستخدم" }, blurb: { en: "Premium interfaces shaped around usability, storytelling and measurable conversion.", ar: "واجهات احترافية مبنية على سهولة الاستخدام والتحويل القابل للقياس." }, price: { en: "Starting from EGP 8,000", ar: "تبدأ من ٨٬٠٠٠ ج.م" }, highlights: { en: "UX research + wireframes\nPremium UI system\nInteractive prototype\nDeveloper-ready handoff", ar: "أبحاث UX + هياكل أولية\nنظام واجهات احترافي\nنموذج تفاعلي\nتسليم جاهز للمطورين" } },
     { id: "soc", accent: "from-pink-300 to-rose-500", icon: "mega", visible: true, badge: { en: "", ar: "" }, name: { en: "Social Media Management", ar: "إدارة وسائل التواصل" }, blurb: { en: "Content strategy, production, posting, analytics and growth-focused account care.", ar: "استراتيجية محتوى وإنتاج ونشر وتحليلات وإدارة حسابات موجهة للنمو." }, price: { en: "From EGP 6,500/month", ar: "من ٦٬٥٠٠ ج.م شهرياً" }, highlights: { en: "Monthly content calendar\nDesign + reels production\nPosting + community care\nGrowth + performance reports", ar: "خطة محتوى شهرية\nتصميم وإنتاج ريلز\nنشر وإدارة المجتمع\nتقارير نمو وأداء" } },
     { id: "brand", accent: "from-indigo-300 to-sky-500", icon: "palette", visible: true, badge: { en: "", ar: "" }, name: { en: "Branding", ar: "الهوية البصرية" }, blurb: { en: "Identity systems including logo, typography, color, motion and practical guidelines.", ar: "أنظمة هوية شاملة تضم الشعار والخطوط والألوان والحركة والإرشادات." }, price: { en: "Starting from EGP 12,000", ar: "تبدأ من ١٢٬٠٠٠ ج.م" }, highlights: { en: "Logo + visual identity\nTypography + color system\nSocial kit + templates\nBrand guidelines PDF", ar: "شعار + هوية بصرية\nمنظومة خطوط وألوان\nحزمة سوشيال وقوالب\nدليل استخدام PDF" } },
-    { id: "seo", accent: "from-lime-300 to-green-500", icon: "chart", visible: true, badge: { en: "", ar: "" }, name: { en: "SEO", ar: "تحسين محركات البحث" }, blurb: { en: "Technical and content optimization to improve search visibility and page quality.", ar: "تحسين تقني ومحتوى لرفع الظهور في البحث وجودة الصفحات." }, price: { en: "From EGP 4,000/month", ar: "من ٤٬٠٠٠ ج.م شهرياً" }, highlights: { en: "Technical SEO audit\nKeyword + content plan\nOn-page optimization\nMonthly ranking reports", ar: "تدقيق SEO تقني\nخطة كلمات ومحتوى\nتحسين الصفحات داخلياً\nتقارير ترتيب شهرية" } },
+    { id: "seo", accent: "from-lime-300 to-green-500", icon: "chart", visible: true, badge: { en: "", ar: "" }, name: { en: "SEO", ar: "تحسين محركات البحث" }, blurb: { en: "Technical and content optimization to improve search visibility and page quality.", ar: "تحسين تقني ومحتوى لرفع الظهور في البحث وجودة الصفحات." }, price: { en: "From EGP 5,000/month", ar: "من ٥٬٠٠٠ ج.م شهرياً" }, highlights: { en: "Technical SEO audit\nKeyword + content plan\nOn-page optimization\nMonthly ranking reports", ar: "تدقيق SEO تقني\nخطة كلمات ومحتوى\nتحسين الصفحات داخلياً\nتقارير ترتيب شهرية" } },
     { id: "ai", accent: "from-violet-300 to-cyan-400", icon: "bot", visible: true, badge: { en: "New", ar: "جديد" }, name: { en: "AI Solutions", ar: "حلول الذكاء الاصطناعي" }, blurb: { en: "AI chatbots, automation workflows, AI support and intelligent business tools.", ar: "روبوتات محادثة وأتمتة ودعم ذكي وأدوات أعمال متقدمة." }, price: { en: "Starting from EGP 15,000", ar: "تبدأ من ١٥٬٠٠٠ ج.م" }, highlights: { en: "AI chatbot for sales + support\nWorkflow automation\nSmart lead qualification\nHuman handoff to WhatsApp", ar: "روبوت مبيعات ودعم ذكي\nأتمتة سير العمل\nتأهيل ذكي للعملاء\nتحويل بشري لواتساب" } },
   ],
 
@@ -195,7 +196,7 @@ export const defaultContent: SiteContent = {
     { id: "t1", name: "STARTER", highlight: false, price: { en: "EGP 5,000", ar: "٥٬٠٠٠ ج.م" }, desc: { en: "For small businesses and simple websites.", ar: "للشركات الصغيرة والمواقع البسيطة." } },
     { id: "t2", name: "PROFESSIONAL", highlight: false, price: { en: "EGP 15,000", ar: "١٥٬٠٠٠ ج.م" }, desc: { en: "For businesses requiring advanced functionality.", ar: "للشركات التي تحتاج وظائف متقدمة." } },
     { id: "t3", name: "PREMIUM", highlight: true, price: { en: "EGP 30,000", ar: "٣٠٬٠٠٠ ج.م" }, desc: { en: "For advanced websites, e-commerce and custom systems.", ar: "للمواقع المتقدمة والمتاجر والأنظمة المخصصة." } },
-    { id: "t4", name: "ENTERPRISE", highlight: false, price: { en: "Custom Pricing", ar: "سعر مخصص" }, desc: { en: "For large platforms and complex business systems.", ar: "للمنصات الكبيرة وأنظمة الأعمال المعقدة." } },
+    { id: "t4", name: "ENTERPRISE", highlight: false, price: { en: "Private Price", ar: "سعر خاص" }, desc: { en: "For large platforms and complex business systems.", ar: "للمنصات الكبيرة وأنظمة الأعمال المعقدة." } },
   ],
 
   contact: {
@@ -206,18 +207,25 @@ export const defaultContent: SiteContent = {
     linkedin: "https://linkedin.com",
     instagram: "https://instagram.com",
     behance: "https://behance.net",
+    facebook: "https://www.facebook.com/dev.nexora.eg",
   },
 
   pricing: {
-    websiteTypes: { "Landing Page": 5000, "Business Website": 12000, Portfolio: 9000, "Restaurant Website": 14000, "Real Estate Website": 18000, "Booking Website": 24000, "E-commerce": 35000, Marketplace: 70000, "Learning Platform": 85000, "Web Application": 95000, "Custom Enterprise Platform": 180000 },
-    pagePrice: 1200,
-    features: { "Customer accounts": 9000, "Admin dashboard": 14000, "Online payments": 12000, "Vodafone Cash": 6500, Paymob: 8000, "Booking system": 15000, "Product management": 11000, "Order management": 12000, Notifications: 7000, "Email integration": 4500, "WhatsApp integration": 6000, "AI chatbot": 18000, "Search system": 9000, Reviews: 5000, Analytics: 6500, "Multi-language": 10000, "Multi-currency": 9000, "API integrations": 15000, "Custom database": 18000, "Advanced security": 16000, CMS: 10000, "SEO optimization": 7500 },
-    designLevels: { Starter: 1, Professional: 1.35, Premium: 1.9, Enterprise: 2.8 },
+    websiteTypes: { "Landing Page": 5000, "Business Website": 8000, Portfolio: 7000, "Restaurant Website": 10000, "Real Estate Website": 12000, "Booking Website": 15000, "E-commerce": 20000, Marketplace: 27000, "Learning Platform": 15000, "Web Application": 25000, "Custom Enterprise Platform": 30000 },
+    pagePrice: 800,
+    features: { "Customer accounts": 5000, "Admin dashboard": 7000, "Online payments": 6000, "Vodafone Cash": 3000, Paymob: 4000, "Booking system": 8000, "Product management": 6000, "Order management": 6000, Notifications: 3500, "Email integration": 2500, "WhatsApp integration": 3000, "AI chatbot": 9000, "Search system": 4500, Reviews: 2500, Analytics: 3500, "Multi-language": 5000, "Multi-currency": 4500, "API integrations": 8000, "Custom database": 9000, "Advanced security": 8000, CMS: 5000, "SEO optimization": 4000 },
+    designLevels: { Starter: 1, Professional: 1.25, Premium: 1.5, Enterprise: 1.8 },
     maxQuote: 30000,
   },
 };
 
 const STORAGE_KEY = "nexora_site_content";
+const PRICING_VERSION_KEY = "nexora_pricing_version";
+/** Bump this whenever the default price table changes, so stale browsers pick up the new prices. */
+const PRICING_VERSION = 4;
+
+/** Official Facebook contact — used for Private Price CTAs. */
+export const FACEBOOK_URL = "https://www.facebook.com/dev.nexora.eg";
 
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
@@ -265,6 +273,14 @@ export function loadContent(): SiteContent {
     const saved = JSON.parse(raw);
     const merged = deepMerge(defaultContent, saved);
     merged.services = migrateServices(merged.services ?? []);
+    // Price table updates ship with the code — ignore stale saved prices once.
+    try {
+      if (localStorage.getItem(PRICING_VERSION_KEY) !== String(PRICING_VERSION)) {
+        merged.pricing = defaultContent.pricing;
+      }
+    } catch {
+      /* storage unavailable */
+    }
     return merged;
   } catch {
     return defaultContent;
@@ -274,6 +290,7 @@ export function loadContent(): SiteContent {
 export function saveContent(content: SiteContent) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
+    localStorage.setItem(PRICING_VERSION_KEY, String(PRICING_VERSION));
     return true;
   } catch {
     return false;
@@ -283,6 +300,7 @@ export function saveContent(content: SiteContent) {
 export function resetContent() {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PRICING_VERSION_KEY);
   } catch {
     /* storage unavailable */
   }
